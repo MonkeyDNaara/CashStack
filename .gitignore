@@ -433,3 +433,10 @@ Temporary Items
 *.icloud
 
 # End of https://www.toptal.com/developers/gitignore/api/csharp,macos
+
+# Doc files
+data/
+logs/
+docs/planning/create_issues.py
+docs/project_instructions_files/
+docs/project_instructions.html
