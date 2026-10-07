@@ -33,7 +33,27 @@ public class StorageService
         WriteFile(path, transactions);
     }
 
+    public List<Transaction> Load(DateOnly from, DateOnly to)
+    {
+        if (from > to)
+        {
+            throw new ArgumentException("From-date is after to-date", nameof(from));
+        }
+        return Directory.GetFiles(_dataDirectory, "*.json")
+            .Where(path => IsInRange(path, from, to))
+            .SelectMany(ReadFile)
+            .OrderBy(t => t.Timestamp)
+            .ToList();
+    }
+
     // Helper functions
+    private static bool IsInRange(string path, DateOnly from, DateOnly to)
+    {
+        string filename = Path.GetFileNameWithoutExtension(path);
+        if (!DateOnly.TryParseExact(filename, DateFormat, CultureInfo.InvariantCulture, DateTimeStyles.None, out DateOnly date)) { return true; }
+        return date >= from && date <= to;
+    }
+
     private string GetFilePath(DateOnly day)
     {
         string filename = day.ToString(DateFormat, CultureInfo.InvariantCulture);
