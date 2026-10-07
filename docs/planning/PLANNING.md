@@ -54,7 +54,7 @@ CashStack/
 | `Description` | `string`        | not empty                                                   |
 | `Amount`    | `decimal`         | always **> 0**; `Type` decides + / −                        |
 
-Design decision to make: `record` vs `class`. A transaction never changes after it's created → `record` (immutable, value equality, nice `ToString()`) fits well. Look at both in the "Record, Classes and Interfaces" lesson and decide.
+Decision: **class** (practice OOP: constructor, encapsulation, validation). Properties get-only / `init` so a transaction can't change after creation.
 
 `decimal`, not `double`: money must be exact (`0.1 + 0.2` problem).
 
@@ -120,7 +120,7 @@ Order = dependency order. Each sub-issue is small enough for one branch + one PR
 
 ### Epic 2 – Domain Models · FR012, FR013
 1. `TransactionType` enum (`Income`, `Expense`)
-2. `Transaction` model (5 properties, record vs class decision)
+2. `Transaction` class (5 properties, constructor, immutable)
 3. `TransactionAddedEventArgs : EventArgs`
 
 ### Epic 3 – Persistence: StorageService · FR004, FR005, FR006, FR014

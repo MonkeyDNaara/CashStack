@@ -15,7 +15,6 @@ classDiagram
             Expense
         }
         class Transaction {
-            <<record>>
             +Guid Id
             +DateTimeOffset Timestamp
             +TransactionType Type
