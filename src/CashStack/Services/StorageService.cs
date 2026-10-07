@@ -33,6 +33,29 @@ public class StorageService
         WriteFile(path, transactions);
     }
 
+    public List<Transaction> Load(DateOnly from, DateOnly to)
+    {
+        if (from > to)
+        {
+            throw new ArgumentException("From-date is after to-date", nameof(from));
+        }
+        List<Transaction> report = [];
+        string[] files = Directory.GetFiles(_dataDirectory, "*.json");
+        foreach (var file in files)
+        {
+            string filename = Path.GetFileNameWithoutExtension(file);
+            if (!DateOnly.TryParseExact(filename, DateFormat, CultureInfo.InvariantCulture, DateTimeStyles.None, out DateOnly date))
+            {
+                continue;
+            }
+            if (date >= from && date <= to)
+            {
+                report.AddRange(ReadFile(file));
+            }
+        }
+        return report.OrderBy(t => t.Timestamp).ToList();
+    }
+
     // Helper functions
     private string GetFilePath(DateOnly day)
     {
