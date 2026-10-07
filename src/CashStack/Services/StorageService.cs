@@ -14,7 +14,7 @@ public class StorageService
         WriteIndented = true,
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
         Converters = { new JsonStringEnumConverter() }
-    }; 
+    };
     private readonly string _dataDirectory;
 
     public StorageService(string dataDirectory)
@@ -23,6 +23,17 @@ public class StorageService
         _dataDirectory = dataDirectory;
     }
 
+    // Main methods
+    public void Save(Transaction transaction)
+    {
+        DateOnly day = DateOnly.FromDateTime(transaction.Timestamp.DateTime);
+        string path = GetFilePath(day);
+        List<Transaction> transactions = ReadFile(path);
+        transactions.Add(transaction);
+        WriteFile(path, transactions);
+    }
+
+    // Helper functions
     private string GetFilePath(DateOnly day)
     {
         string filename = day.ToString(DateFormat, CultureInfo.InvariantCulture);
