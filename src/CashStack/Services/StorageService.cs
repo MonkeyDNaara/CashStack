@@ -46,12 +46,40 @@ public class StorageService
             .ToList();
     }
 
+    public bool Remove(Guid id)
+    {
+        foreach (var path in GetDayFiles())
+        {
+            List<Transaction> transactions = ReadFile(path);
+            if (transactions.RemoveAll(t => t.Id == id) > 0)
+            {
+                WriteFile(path, transactions);
+                return true;
+            }
+        }
+        return false;
+    }
+
     // Helper functions
     private static bool IsInRange(string path, DateOnly from, DateOnly to)
     {
-        string filename = Path.GetFileNameWithoutExtension(path);
-        if (!DateOnly.TryParseExact(filename, DateFormat, CultureInfo.InvariantCulture, DateTimeStyles.None, out DateOnly date)) { return true; }
+        if (!TryGetDay(path, out DateOnly date))
+        {
+            return false;
+        }
         return date >= from && date <= to;
+    }
+
+    private IEnumerable<string> GetDayFiles()
+    {
+        return Directory.GetFiles(_dataDirectory, "*.json")
+            .Where(path => TryGetDay(path, out _));
+    }
+
+    private static bool TryGetDay(string path, out DateOnly day)
+    {
+        string filename = Path.GetFileNameWithoutExtension(path);
+        return DateOnly.TryParseExact(filename, DateFormat, CultureInfo.InvariantCulture, DateTimeStyles.None, out day);
     }
 
     private string GetFilePath(DateOnly day)
