@@ -35,9 +35,17 @@ public class TransactionService
     {
         var transactions = _storage.Load(from, to);
         if (type == null)
-            {
-                return transactions;
-            }
+        {
+            return transactions;
+        }
         return transactions.Where(t => t.Type == type).ToList();
+    }
+
+    public TransactionSummary GetSummary(DateOnly from, DateOnly to)
+    {
+        var transactions = _storage.Load(from, to);
+        decimal income = transactions.Where(t => t.Type == TransactionType.Income).Sum(t => t.Amount);
+        decimal expenses = transactions.Where(t => t.Type == TransactionType.Expense).Sum(t => t.Amount);
+        return new TransactionSummary(income, expenses);
     }
 }
