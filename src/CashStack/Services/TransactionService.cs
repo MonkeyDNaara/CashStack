@@ -28,4 +28,16 @@ public class TransactionService
 
         return transaction;
     }
+
+    public bool Remove(Guid id) => _storage.Remove(id);
+
+    public List<Transaction> GetTransactions(DateOnly from, DateOnly to, TransactionType? type = null)
+    {
+        var transactions = _storage.Load(from, to);
+        if (type == null)
+            {
+                return transactions;
+            }
+        return transactions.Where(t => t.Type == type).ToList();
+    }
 }
