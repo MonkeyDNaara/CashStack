@@ -6,7 +6,7 @@ namespace CashStack.Services;
 public class TransactionService
 {
     private readonly StorageService _storage;
-    public EventHandler<TransactionAddedEventArgs>? TransactionAdded;
+    public event EventHandler<TransactionAddedEventArgs>? TransactionAdded;
 
     public TransactionService(StorageService storage)
     {
@@ -27,5 +27,17 @@ public class TransactionService
         TransactionAdded?.Invoke(this, new TransactionAddedEventArgs(transaction));
 
         return transaction;
+    }
+
+    public bool Remove(Guid id) => _storage.Remove(id);
+
+    public List<Transaction> GetTransactions(DateOnly from, DateOnly to, TransactionType? type = null)
+    {
+        var transactions = _storage.Load(from, to);
+        if (type == null)
+            {
+                return transactions;
+            }
+        return transactions.Where(t => t.Type == type).ToList();
     }
 }
