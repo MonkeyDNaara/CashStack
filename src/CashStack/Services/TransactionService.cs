@@ -6,7 +6,7 @@ namespace CashStack.Services;
 public class TransactionService
 {
     private readonly StorageService _storage;
-    public EventHandler<TransactionAddedEventArgs>? TransactionAdded;
+    public event EventHandler<TransactionAddedEventArgs>? TransactionAdded;
 
     public TransactionService(StorageService storage)
     {
