@@ -1,10 +1,12 @@
 using CashStack.Models;
+using CashStack.Events;
 
 namespace CashStack.Services;
 
 public class TransactionService
 {
     private readonly StorageService _storage;
+    public EventHandler<TransactionAddedEventArgs>? TransactionAdded;
 
     public TransactionService(StorageService storage)
     {
@@ -14,7 +16,7 @@ public class TransactionService
     public Transaction Add(TransactionType type, string description, decimal amount)
     {
         var transaction = new Transaction(
-            Guid.NewGuid(), 
+            Guid.NewGuid(),
             DateTimeOffset.Now,
             type,
             description,
@@ -22,6 +24,7 @@ public class TransactionService
         );
 
         _storage.Save(transaction);
+        TransactionAdded?.Invoke(this, new TransactionAddedEventArgs(transaction));
 
         return transaction;
     }
