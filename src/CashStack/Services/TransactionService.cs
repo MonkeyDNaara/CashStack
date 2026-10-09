@@ -21,6 +21,8 @@ public class TransactionService
             amount
         );
 
+        _storage.Save(transaction);
+
         return transaction;
     }
 }
