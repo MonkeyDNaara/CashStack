@@ -48,9 +48,4 @@ public class TransactionService
         decimal expenses = transactions.Where(t => t.Type == TransactionType.Expense).Sum(t => t.Amount);
         return new TransactionSummary(income, expenses);
     }
-
-    internal void GetSummary(int v1, int v2)
-    {
-        throw new NotImplementedException();
-    }
 }
