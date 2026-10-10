@@ -24,7 +24,7 @@ while (running)
             RemoveTransaction();
             break;
         case "3":
-            Console.WriteLine("Coming soon.");
+            ShowReport();
             break;
         case "0":
             running = false;
@@ -97,6 +97,38 @@ void RemoveTransaction()
 
     bool removed = transactions.Remove(selected.Id);
     Console.WriteLine(removed ? "Transaction removed." : "Transaction not found. It may have been removed already.");
+}
+
+void ShowReport()
+{
+    PrintHeader("Report");
+
+    var (from, to) = ReadDateRange();
+    TransactionType? typeFilter = ReadTypeFilter("Type (i = income, e = expense, Enter = all): ");
+
+    List<Transaction> list = transactions.GetTransactions(from, to, typeFilter)
+        .OrderBy(t => t.Timestamp)
+        .ToList();
+
+    string filterText = typeFilter?.ToString() ?? "All types";
+    Console.WriteLine();
+    Console.WriteLine($"{FormatDate(from)} to {FormatDate(to)} | {filterText}");
+
+    if (list.Count == 0)
+    {
+        Console.WriteLine("No transactions found.");
+    }
+    else
+    {
+        PrintTransactions(list);
+    }
+
+    TransactionSummary summary = transactions.GetSummary(from, to);
+    Console.WriteLine();
+    Console.WriteLine("Summary for this period (all types):");
+    Console.WriteLine($"  Income:   {FormatAmount(summary.Income),12}");
+    Console.WriteLine($"  Expenses: {FormatAmount(summary.Expenses),12}");
+    Console.WriteLine($"  Balance:  {FormatAmount(summary.Balance),12}");
 }
 
 // ---------- Output helpers ----------
