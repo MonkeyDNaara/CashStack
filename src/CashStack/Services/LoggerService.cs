@@ -24,6 +24,13 @@ public class LoggerService
 
         string line = $"{timestamp} | ADDED | {t.Type,-7} | {amount,10} | {t.Description} | {t.Id}";
 
-        File.AppendAllText(_logFilePath, line + Environment.NewLine);
+        try
+        {
+            File.AppendAllText(_logFilePath, line + Environment.NewLine);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            Console.Error.WriteLine($"Warning: Could not write log: {ex.Message}");
+        }
     }
 }
