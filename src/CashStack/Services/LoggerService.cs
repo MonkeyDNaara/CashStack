@@ -2,12 +2,15 @@ namespace CashStack.Services;
 
 public class LoggerService
 {
-    private readonly string _folder = "logs";
+    private readonly string _logFilePath;
+    const string LogFileName = "transactions.log";
 
-    public LoggerService(){
+    public LoggerService(string logDirectory)
+    {
+        _logFilePath = Path.Combine(logDirectory, LogFileName);    
         
-    if (!Directory.Exists(_folder)){
-        Directory.CreateDirectory(_folder);
+        if (!Directory.Exists(logDirectory)){
+            Directory.CreateDirectory(logDirectory);
+        }
     }
-}
     }
