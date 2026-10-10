@@ -21,7 +21,7 @@ while (running)
             AddTransaction();
             break;
         case "2":
-            Console.WriteLine("Coming soon.");
+            RemoveTransaction();
             break;
         case "3":
             Console.WriteLine("Coming soon.");
@@ -63,12 +63,56 @@ void AddTransaction()
     Console.WriteLine($"Added: {FormatTransaction(transaction)}");
 }
 
+void RemoveTransaction()
+{
+    PrintHeader("Remove transaction");
+
+    var (from, to) = ReadDateRange();
+    List<Transaction> list = transactions.GetTransactions(from, to)
+        .OrderBy(t => t.Timestamp)
+        .ToList();
+
+    if (list.Count == 0)
+    {
+        Console.WriteLine("No transactions found in this period.");
+        return;
+    }
+
+    Console.WriteLine();
+    PrintTransactions(list);
+
+    int number = ReadNumber("Number to remove (0 = cancel): ", 0, list.Count);
+    if (number == 0)
+    {
+        Console.WriteLine("Cancelled.");
+        return;
+    }
+
+    Transaction selected = list[number - 1];
+    if (!ReadYesNo($"Remove \"{selected.Description}\" ({FormatSignedAmount(selected)})?"))
+    {
+        Console.WriteLine("Cancelled.");
+        return;
+    }
+
+    bool removed = transactions.Remove(selected.Id);
+    Console.WriteLine(removed ? "Transaction removed." : "Transaction not found. It may have been removed already.");
+}
+
 // ---------- Output helpers ----------
 
 void PrintHeader(string title)
 {
     Console.WriteLine();
     Console.WriteLine($"--- {title} ---");
+}
+
+void PrintTransactions(List<Transaction> list)
+{
+    for (int i = 0; i < list.Count; i++)
+    {
+        Console.WriteLine($"{i + 1,3}) {FormatTransaction(list[i])}");
+    }
 }
 
 string FormatTransaction(Transaction t)
