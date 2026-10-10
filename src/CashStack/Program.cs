@@ -18,7 +18,7 @@ while (running)
     switch (choice)
     {
         case "1":
-            Console.WriteLine("Coming soon.");
+            AddTransaction();
             break;
         case "2":
             Console.WriteLine("Coming soon.");
@@ -49,7 +49,41 @@ void PrintMenu()
     Console.WriteLine("0) Exit");
 }
 
+// ---------- Flows ----------
+
+void AddTransaction()
+{
+    PrintHeader("Add transaction");
+
+    TransactionType type = ReadType("Type (i = income, e = expense): ");
+    string description = ReadText("Description: ");
+    decimal amount = ReadAmount("Amount: ");
+
+    Transaction transaction = transactions.Add(type, description, amount);
+    Console.WriteLine($"Added: {FormatTransaction(transaction)}");
+}
+
 // ---------- Output helpers ----------
+
+void PrintHeader(string title)
+{
+    Console.WriteLine();
+    Console.WriteLine($"--- {title} ---");
+}
+
+string FormatTransaction(Transaction t)
+{
+    string timestamp = t.Timestamp.ToString("yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture);
+    return $"{timestamp} | {t.Type,-7} | {FormatSignedAmount(t),10} | {t.Description}";
+}
+
+string FormatSignedAmount(Transaction t)
+{
+    string sign = t.Type == TransactionType.Expense ? "-" : "+";
+    return sign + FormatAmount(t.Amount);
+}
+
+string FormatAmount(decimal amount) => amount.ToString("F2", CultureInfo.InvariantCulture);
 
 string FormatDate(DateOnly date) => date.ToString(DateFormat, CultureInfo.InvariantCulture);
 
