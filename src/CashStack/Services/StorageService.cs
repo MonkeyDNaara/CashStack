@@ -132,7 +132,7 @@ public class StorageService
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
-            throw new StorageException($"Could not read directory ''{_dataDirectory}", ex);
+            throw new StorageException($"Could not read directory '{_dataDirectory}'", ex);
         }
     }
 
