@@ -5,16 +5,34 @@ using CashStack.Exceptions;
 
 const string DateFormat = "yyyy-MM-dd";
 
-var storage = new StorageService("data");
+StorageService storage;
+try
+{
+    storage = new StorageService("data");
+}
+catch (StorageException ex)
+{
+    Console.Error.WriteLine($"Error: {ex.Message} -> {ex.InnerException?.Message}");
+    Environment.ExitCode = 1;
+    return;
+}
 var transactions = new TransactionService(storage);
-var logger = new LoggerService("logs");
-transactions.TransactionAdded += logger.OnTransactionAdded;
+try
+{
+    var logger = new LoggerService("logs");
+    transactions.TransactionAdded += logger.OnTransactionAdded;
+}
+catch (IOException ex)
+{
+    Console.Error.WriteLine($"Logging Error: {ex.Message}");
+}
 
 bool running = true;
 while (running)
 {
     PrintMenu();
     string choice = Prompt("Choose an option: ");
+
     try
     {
         switch (choice)
@@ -42,7 +60,7 @@ while (running)
     }
     catch (Exception ex)
     {
-        Console.Error.WriteLine($"Unexpected Error: {ex.Message}");
+        Console.Error.WriteLine($"Unexpected Error: {ex.Message}: {ex.GetType().Name}");
     }
 }
 
