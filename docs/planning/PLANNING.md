@@ -178,3 +178,51 @@ Order = dependency order. Each sub-issue is small enough for one branch + one PR
 | 3        | Epic 4 + Epic 5                        |
 | 4        | Epic 6 + Epic 7                        |
 | 5        | Epic 8, requirement check, stretch     |
+
+---
+
+## 6. Epic 10 – REST API (ASP.NET Core)
+
+Added 2026-10-26. Goal: expose the finished console MVP as a REST API and cover the course topics **REST API, Hosting, Middleware Pipeline, Endpoint Routing, Filters & Validation, Error Handling**. (The course list says "Hoisting" – that is a JavaScript concept; the ASP.NET topic is *Hosting*.) Milestone: `API`. Not part of FR001–FR016.
+
+**Decisions**
+
+- Shared `CashStack.Core` class library; the console app and the API both reference it.
+- Controllers, not Minimal APIs: filters are an MVC feature, and the course topic is "Filters & Validation".
+- Route prefix `/api/v1/transactions`; DTOs instead of exposing `Transaction`.
+- Order: merge the console PR and finish Epic 7 first (`StorageException` is reused by the global exception handler).
+
+**Target structure**
+
+```
+src/
+├── CashStack.Core/      # Models, Events, Services, Exceptions (classlib)
+├── CashStack/           # Console UI (Program.cs) -> references Core
+└── CashStack.Api/       # ASP.NET Core Web API   -> references Core
+tests/CashStack.Tests/
+```
+
+**Endpoints**
+
+| Method + route | Purpose | Success | Errors |
+|---|---|---|---|
+| `GET /api/v1/transactions?from&to&type` | list | 200 | 400 |
+| `GET /api/v1/transactions/summary?from&to` | totals | 200 | 400 |
+| `POST /api/v1/transactions` | create | 201 + `Location` | 400 |
+| `DELETE /api/v1/transactions/{id:guid}` | remove | 204 | 404 |
+
+**Issues (in order)**
+
+1. Extract `CashStack.Core` class library
+2. Add `CashStack.Api`: hosting, DI and configuration
+3. Transactions controller: REST endpoints, DTOs and routing
+4. Custom middleware: request timing and logging
+5. Request validation with DataAnnotations
+6. Action filter: validate date range
+7. Global error handling: `IExceptionHandler` and ProblemDetails
+8. Make `StorageService` thread-safe (parallel requests)
+9. Docs: update README and UML for Core and Api
+
+Stretch additions (Epic 9): API integration tests with `WebApplicationFactory`, OpenAPI documentation with a UI (Scalar).
+
+**Concept map:** Hosting = builder phase (services) + app phase (pipeline); Endpoint Routing = match, then execute; Middleware = ordered chain around the endpoint; Filters = MVC pipeline around the action; Validation = DataAnnotations + filter; Error Handling = `IExceptionHandler` + ProblemDetails.
