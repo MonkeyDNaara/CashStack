@@ -20,7 +20,14 @@ public class StorageService
 
     public StorageService(string dataDirectory)
     {
-        Directory.CreateDirectory(dataDirectory);
+        try
+        {
+            Directory.CreateDirectory(dataDirectory);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            throw new StorageException($"Could not create directory '{dataDirectory}'", ex);
+        }
         _dataDirectory = dataDirectory;
     }
 
