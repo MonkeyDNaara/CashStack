@@ -2,6 +2,7 @@ using System.Text.Json;
 using System.Globalization;
 using System.Text.Json.Serialization;
 using CashStack.Models;
+using CashStack.Exceptions;
 
 namespace CashStack.Services;
 
@@ -19,7 +20,14 @@ public class StorageService
 
     public StorageService(string dataDirectory)
     {
-        Directory.CreateDirectory(dataDirectory);
+        try
+        {
+            Directory.CreateDirectory(dataDirectory);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            throw new StorageException($"Could not create directory '{dataDirectory}'", ex);
+        }
         _dataDirectory = dataDirectory;
     }
 
@@ -39,7 +47,7 @@ public class StorageService
         {
             throw new ArgumentException("From-date is after to-date", nameof(from));
         }
-        return Directory.GetFiles(_dataDirectory, "*.json")
+        return GetJsonFiles()
             .Where(path => IsInRange(path, from, to))
             .SelectMany(ReadFile)
             .OrderBy(t => t.Timestamp)
@@ -72,7 +80,7 @@ public class StorageService
 
     private IEnumerable<string> GetDayFiles()
     {
-        return Directory.GetFiles(_dataDirectory, "*.json")
+        return GetJsonFiles()
             .Where(path => TryGetDay(path, out _));
     }
 
@@ -92,14 +100,40 @@ public class StorageService
     private static List<Transaction> ReadFile(string path)
     {
         if (!File.Exists(path)) return [];
-        string jsonIn = File.ReadAllText(path);
-        List<Transaction> loaded = JsonSerializer.Deserialize<List<Transaction>>(jsonIn, _options) ?? [];
-        return loaded;
+        try
+        {
+            string jsonIn = File.ReadAllText(path);
+            return JsonSerializer.Deserialize<List<Transaction>>(jsonIn, _options) ?? [];
+        }
+        catch (Exception ex) when (ex is JsonException or IOException or UnauthorizedAccessException or ArgumentException)
+        {
+            throw new StorageException($"Could not read '{path}'", ex);
+        }
     }
 
     private static void WriteFile(string path, List<Transaction> transactions)
     {
-        string jsonPretty = JsonSerializer.Serialize(transactions, _options);
-        File.WriteAllText(path, jsonPretty);
+        try
+        {
+            string jsonPretty = JsonSerializer.Serialize(transactions, _options);
+            File.WriteAllText(path, jsonPretty);
+        }
+        catch (Exception ex) when (ex is JsonException or IOException or UnauthorizedAccessException)
+        {
+            throw new StorageException($"Could not write '{path}'", ex);
+        }
     }
+
+    private string[] GetJsonFiles()
+    {
+        try
+        {
+            return Directory.GetFiles(_dataDirectory, "*.json");
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            throw new StorageException($"Could not read directory '{_dataDirectory}'", ex);
+        }
+    }
+
 }
