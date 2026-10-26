@@ -1,13 +1,31 @@
 ﻿using System.Globalization;
 using CashStack.Services;
 using CashStack.Models;
+using CashStack.Exceptions;
 
 const string DateFormat = "yyyy-MM-dd";
 
-var storage = new StorageService("data");
+StorageService storage;
+try
+{
+    storage = new StorageService("data");
+}
+catch (StorageException ex)
+{
+    Console.Error.WriteLine($"Error: {ex.Message} -> {ex.InnerException?.Message}");
+    Environment.ExitCode = 1;
+    return;
+}
 var transactions = new TransactionService(storage);
-var logger = new LoggerService("logs");
-transactions.TransactionAdded += logger.OnTransactionAdded;
+try
+{
+    var logger = new LoggerService("logs");
+    transactions.TransactionAdded += logger.OnTransactionAdded;
+}
+catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+{
+    Console.Error.WriteLine($"Warning: {ex.Message}");
+}
 
 bool running = true;
 while (running)
@@ -15,23 +33,34 @@ while (running)
     PrintMenu();
     string choice = Prompt("Choose an option: ");
 
-    switch (choice)
+    try
     {
-        case "1":
-            AddTransaction();
-            break;
-        case "2":
-            RemoveTransaction();
-            break;
-        case "3":
-            ShowReport();
-            break;
-        case "0":
-            running = false;
-            break;
-        default:
-            Console.WriteLine("Invalid option. Please enter a number from 0 to 3.");
-            break;
+        switch (choice)
+        {
+            case "1":
+                AddTransaction();
+                break;
+            case "2":
+                RemoveTransaction();
+                break;
+            case "3":
+                ShowReport();
+                break;
+            case "0":
+                running = false;
+                break;
+            default:
+                Console.WriteLine("Invalid option. Please enter a number from 0 to 3.");
+                break;
+        }
+    }
+    catch (StorageException ex)
+    {
+        Console.Error.WriteLine($"Error: {ex.Message} -> {ex.InnerException?.Message}");
+    }
+    catch (Exception ex)
+    {
+        Console.Error.WriteLine($"Unexpected Error: {ex.Message}: {ex.GetType().Name}");
     }
 }
 
