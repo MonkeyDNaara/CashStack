@@ -22,9 +22,9 @@ try
     var logger = new LoggerService("logs");
     transactions.TransactionAdded += logger.OnTransactionAdded;
 }
-catch (IOException ex)
+catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
 {
-    Console.Error.WriteLine($"Logging Error: {ex.Message}");
+    Console.Error.WriteLine($"Warning: {ex.Message}");
 }
 
 bool running = true;
