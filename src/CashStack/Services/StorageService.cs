@@ -128,7 +128,7 @@ public class StorageService
     {
         try
         {
-            return Directory.GetFiles(_dataDirectory, "'.json");
+            return Directory.GetFiles(_dataDirectory, "*.json");
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
