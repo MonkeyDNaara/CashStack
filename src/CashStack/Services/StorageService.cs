@@ -40,7 +40,7 @@ public class StorageService
         {
             throw new ArgumentException("From-date is after to-date", nameof(from));
         }
-        return Directory.GetFiles(_dataDirectory, "*.json")
+        return GetJsonFiles()
             .Where(path => IsInRange(path, from, to))
             .SelectMany(ReadFile)
             .OrderBy(t => t.Timestamp)
@@ -73,7 +73,7 @@ public class StorageService
 
     private IEnumerable<string> GetDayFiles()
     {
-        return Directory.GetFiles(_dataDirectory, "*.json")
+        return GetJsonFiles()
             .Where(path => TryGetDay(path, out _));
     }
 
@@ -116,4 +116,17 @@ public class StorageService
             throw new StorageException($"Could not write '{path}'", ex);
         }
     }
+
+    private string[] GetJsonFiles()
+    {
+        try
+        {
+            return Directory.GetFiles(_dataDirectory, "'.json");
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            throw new StorageException($"Could not read directory ''{_dataDirectory}", ex);
+        }
+    }
+
 }
