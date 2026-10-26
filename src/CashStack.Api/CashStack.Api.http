@@ -1,0 +1,6 @@
+@CashStack.Api_HostAddress = http://localhost:5198
+
+GET {{CashStack.Api_HostAddress}}/
+Accept: application/json
+
+###

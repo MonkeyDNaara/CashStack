@@ -1,5 +1,6 @@
 <Solution>
   <Folder Name="/src/">
+    <Project Path="src/CashStack.Api/CashStack.Api.csproj" />
     <Project Path="src/CashStack.Core/CashStack.Core.csproj" />
     <Project Path="src/CashStack/CashStack.csproj" />
   </Folder>
