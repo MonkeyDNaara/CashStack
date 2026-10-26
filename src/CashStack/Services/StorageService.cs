@@ -2,6 +2,7 @@ using System.Text.Json;
 using System.Globalization;
 using System.Text.Json.Serialization;
 using CashStack.Models;
+using CashStack.Exceptions;
 
 namespace CashStack.Services;
 
@@ -92,14 +93,27 @@ public class StorageService
     private static List<Transaction> ReadFile(string path)
     {
         if (!File.Exists(path)) return [];
-        string jsonIn = File.ReadAllText(path);
-        List<Transaction> loaded = JsonSerializer.Deserialize<List<Transaction>>(jsonIn, _options) ?? [];
-        return loaded;
+        try
+        {
+            string jsonIn = File.ReadAllText(path);
+            return JsonSerializer.Deserialize<List<Transaction>>(jsonIn, _options) ?? [];
+        }
+        catch (Exception ex) when (ex is JsonException or IOException or UnauthorizedAccessException)
+        {
+            throw new StorageException($"Could not read '{path}'", ex);
+        }
     }
 
     private static void WriteFile(string path, List<Transaction> transactions)
     {
-        string jsonPretty = JsonSerializer.Serialize(transactions, _options);
-        File.WriteAllText(path, jsonPretty);
+        try
+        {
+            string jsonPretty = JsonSerializer.Serialize(transactions, _options);
+            File.WriteAllText(path, jsonPretty);
+        }
+        catch (Exception ex) when (ex is JsonException or IOException or UnauthorizedAccessException)
+        {
+            throw new StorageException($"Could not write '{path}'", ex);
+        }
     }
 }
