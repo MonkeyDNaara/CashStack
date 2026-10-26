@@ -105,7 +105,7 @@ public class StorageService
             string jsonIn = File.ReadAllText(path);
             return JsonSerializer.Deserialize<List<Transaction>>(jsonIn, _options) ?? [];
         }
-        catch (Exception ex) when (ex is JsonException or IOException or UnauthorizedAccessException)
+        catch (Exception ex) when (ex is JsonException or IOException or UnauthorizedAccessException or ArgumentException)
         {
             throw new StorageException($"Could not read '{path}'", ex);
         }
