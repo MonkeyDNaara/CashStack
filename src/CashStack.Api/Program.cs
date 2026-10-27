@@ -8,4 +8,8 @@ builder.Services.AddSingleton(_ => new LoggerService(builder.Configuration["Stor
 
 var app = builder.Build();
 
+var transactionService = app.Services.GetRequiredService<TransactionService>();
+var logger = app.Services.GetRequiredService<LoggerService>();
+transactionService.TransactionAdded += logger.OnTransactionAdded;
+
 app.Run();
