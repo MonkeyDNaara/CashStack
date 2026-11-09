@@ -1,3 +1,4 @@
+using CashStack.Api.Middleware;
 using CashStack.Services;
 using System.Text.Json.Serialization;
 
@@ -7,12 +8,15 @@ builder.Services.AddSingleton(_ => new StorageService(builder.Configuration["Sto
 builder.Services.AddSingleton<TransactionService>();
 builder.Services.AddSingleton(_ => new LoggerService(builder.Configuration["Storage:LogDirectory"] ?? "logs"));
 builder.Services.AddControllers().AddJsonOptions(o => o.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
+builder.Services.AddRequestTiming();
 
 var app = builder.Build();
 
 var transactionService = app.Services.GetRequiredService<TransactionService>();
 var logger = app.Services.GetRequiredService<LoggerService>();
 transactionService.TransactionAdded += logger.OnTransactionAdded;
+
+app.UseRequestTiming();
 
 app.MapControllers();
 
