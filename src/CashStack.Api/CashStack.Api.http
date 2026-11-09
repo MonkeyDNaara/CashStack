@@ -40,3 +40,22 @@ GET {{base}}/00000000-0000-0000-0000-000000000000
 
 ### List: invalid type (400)
 GET {{base}}?type=xyz
+
+### Create: missing type (400)
+POST {{base}}
+Content-Type: application/json
+
+{
+  "description": "No type",
+  "amount": 10
+}
+
+### Create: invalid amount and description (400, several errors)
+POST {{base}}
+Content-Type: application/json
+
+{
+  "type": "Income",
+  "description": " ",
+  "amount": 1.234
+}
