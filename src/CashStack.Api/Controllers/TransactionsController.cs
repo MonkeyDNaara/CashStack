@@ -46,6 +46,20 @@ public class TransactionsController : ControllerBase
         return Ok(TransactionResponse.From(transaction));
     }
 
+    [HttpPost]
+    public ActionResult<TransactionResponse> Create(CreateTransactionRequest request)
+    {
+        Transaction transaction = _service.Add(request.Type, request.Description, request.Amount);
+        var response = TransactionResponse.From(transaction);
+        return CreatedAtAction(nameof(GetById), new { id = transaction.Id }, response);
+    }
+
+    [HttpDelete("{id:guid}")]
+    public IActionResult Delete(Guid id)
+    {
+        return _service.Remove(id) ? NoContent() : NotFound();
+    }
+
     // Default range: first day of the month of 'to' (default today) until 'to'
     private static (DateOnly From, DateOnly To) ResolveRange(DateOnly? from, DateOnly? to)
     {
