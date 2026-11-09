@@ -29,6 +29,8 @@ public class TransactionService
         return transaction;
     }
 
+    public Transaction? GetById(Guid id) => _storage.GetById(id);
+
     public bool Remove(Guid id) => _storage.Remove(id);
 
     public List<Transaction> GetTransactions(DateOnly from, DateOnly to, TransactionType? type = null)

@@ -54,6 +54,13 @@ public class StorageService
             .ToList();
     }
 
+    public Transaction? GetById(Guid id)
+    {
+        return GetDayFiles()
+            .SelectMany(ReadFile)
+            .FirstOrDefault(t => t.Id == id);
+    }
+
     public bool Remove(Guid id)
     {
         foreach (var path in GetDayFiles())
