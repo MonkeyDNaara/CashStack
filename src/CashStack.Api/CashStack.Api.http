@@ -1,6 +1,42 @@
-@CashStack.Api_HostAddress = http://localhost:5198
+@host = http://localhost:5198
+@base = {{host}}/api/v1/transactions
 
-GET {{CashStack.Api_HostAddress}}/
+### List: current month (default range)
+GET {{base}}
 Accept: application/json
 
-###
+### List: date range + type filter
+GET {{base}}?from=2026-10-01&to=2026-10-31&type=Expense
+Accept: application/json
+
+### Summary: current month
+GET {{base}}/summary
+Accept: application/json
+
+### Summary: date range
+GET {{base}}/summary?from=2026-10-01&to=2026-10-31
+Accept: application/json
+
+### Create (201 + Location header)
+# @name create
+POST {{base}}
+Content-Type: application/json
+
+{
+  "type": "Expense",
+  "description": "Groceries",
+  "amount": 42.50
+}
+
+### Get by id (uses the id returned by "create")
+GET {{base}}/{{create.response.body.$.id}}
+Accept: application/json
+
+### Delete (uses the id returned by "create", 204)
+DELETE {{base}}/{{create.response.body.$.id}}
+
+### Get by id: unknown id (404)
+GET {{base}}/00000000-0000-0000-0000-000000000000
+
+### List: invalid type (400)
+GET {{base}}?type=xyz
