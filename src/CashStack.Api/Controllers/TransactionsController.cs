@@ -49,7 +49,7 @@ public class TransactionsController : ControllerBase
     [HttpPost]
     public ActionResult<TransactionResponse> Create(CreateTransactionRequest request)
     {
-        Transaction transaction = _service.Add(request.Type, request.Description, request.Amount);
+        Transaction transaction = _service.Add(request.Type!.Value, request.Description, request.Amount);
         var response = TransactionResponse.From(transaction);
         return CreatedAtAction(nameof(GetById), new { id = transaction.Id }, response);
     }
