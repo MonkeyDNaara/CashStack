@@ -35,6 +35,17 @@ public class TransactionsController : ControllerBase
         return Ok(SummaryResponse.Create(start, end, summary));
     }
 
+    [HttpGet("{id:guid}")]
+    public ActionResult<TransactionResponse> GetById(Guid id)
+    {
+        Transaction? transaction = _service.GetById(id);
+        if (transaction is null)
+        {
+            return NotFound();
+        }
+        return Ok(TransactionResponse.From(transaction));
+    }
+
     // Default range: first day of the month of 'to' (default today) until 'to'
     private static (DateOnly From, DateOnly To) ResolveRange(DateOnly? from, DateOnly? to)
     {
