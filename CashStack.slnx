@@ -4,4 +4,7 @@
     <Project Path="src/CashStack.Core/CashStack.Core.csproj" />
     <Project Path="src/CashStack/CashStack.csproj" />
   </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/CashStack.Tests/CashStack.Tests.csproj" />
+  </Folder>
 </Solution>
