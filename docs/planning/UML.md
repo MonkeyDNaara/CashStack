@@ -1,8 +1,9 @@
 # CashStack – UML
 
-Design target for the MVP. Signatures are a guide — adjust names while implementing, then update this file so README and code stay in sync.
+Current design (after Epic 11, EF Core). Signatures are shortened: `CancellationToken`
+parameters and `async` return types (`Task<…>`) are left out for readability.
 
-## Class diagram
+## Class diagram: Core
 
 ```mermaid
 classDiagram
@@ -18,117 +19,260 @@ classDiagram
             +Guid Id
             +DateTimeOffset Timestamp
             +TransactionType Type
+            +Guid CategoryId
             +string Description
             +decimal Amount
+            +Transaction(id, timestamp, type, categoryId, description, amount)
+        }
+        class Category {
+            +int MaxNameLength = 50$
+            +Guid Id
+            +string Name
+            +TransactionType Type
+            +bool IsProtected
+            +Rename(string newName) void
+        }
+        class DefaultCategories {
+            <<static>>
+            +Guid OtherIncomeId$
+            +Guid OtherExpenseId$
+            +GetOtherId(TransactionType) Guid$
+            +IsProtected(Guid) bool$
+            +CreateStarterSet() IReadOnlyList~Category~$
+        }
+        class TransactionSummary {
+            +decimal Income
+            +decimal Expenses
+            +decimal Balance
+            +IReadOnlyList~CategoryTotal~ Categories
+        }
+        class CategoryTotal {
+            +Guid CategoryId
+            +string Name
+            +TransactionType Type
+            +decimal Total
         }
     }
 
-    namespace Events {
-        class EventArgs {
-            <<.NET>>
+    namespace Repositories {
+        class ITransactionRepository {
+            <<interface>>
+            +AddAsync(Transaction)
+            +GetByIdAsync(Guid) Transaction?
+            +GetRangeAsync(from, to, type?, categoryId?) IReadOnlyList~Transaction~
+            +RemoveAsync(Guid) bool
+            +AnyWithCategoryAsync(Guid) bool
         }
-        class TransactionAddedEventArgs {
-            +Transaction Transaction
+        class ICategoryRepository {
+            <<interface>>
+            +GetAllAsync(type?) IReadOnlyList~Category~
+            +GetByIdAsync(Guid) Category?
+            +AddAsync(Category)
+            +UpdateAsync(Category)
+            +RemoveAsync(Guid) bool
         }
+        class JsonTransactionRepository
+        class JsonCategoryRepository
+        class EfRepositoryBase {
+            <<abstract>>
+            #CashStackDbContext Context
+            #ExecuteAsync~T~(Func~Task~T~~ action) T
+        }
+        class EfTransactionRepository
+        class EfCategoryRepository
     }
 
     namespace Services {
-        class StorageService {
-            -string _dataDirectory
-            -JsonSerializerOptions _jsonOptions
-            +StorageService(string dataDirectory)
-            +Save(Transaction transaction) void
-            +LoadRange(DateOnly from, DateOnly to) IEnumerable~Transaction~
-            +Remove(Guid id) bool
-            -GetFilePath(DateOnly day) string
-            -ReadFile(string path) List~Transaction~
-            -WriteFile(string path, List~Transaction~ transactions) void
-        }
         class TransactionService {
-            -StorageService _storage
-            +event EventHandler~TransactionAddedEventArgs~ TransactionAdded
-            +TransactionService(StorageService storage)
-            +Add(TransactionType type, string description, decimal amount) Transaction
-            +Remove(Guid id) bool
-            +GetTransactions(DateOnly from, DateOnly to, TransactionType? type) IEnumerable~Transaction~
-            #OnTransactionAdded(Transaction transaction) void
+            +event TransactionAdded
+            +AddAsync(type, description, amount, categoryId?) Transaction
+            +GetTransactionsAsync(from, to, type?, categoryId?) IReadOnlyList~Transaction~
+            +GetSummaryAsync(from, to) TransactionSummary
+            +GetByIdAsync(Guid) Transaction?
+            +RemoveAsync(Guid) bool
+        }
+        class CategoryService {
+            +GetAllAsync(type?) IReadOnlyList~Category~
+            +CreateAsync(name, type) Category
+            +RenameAsync(id, newName) Category?
+            +DeleteAsync(id) bool
+        }
+        class ImportService {
+            +ImportAsync() ImportResult
         }
         class LoggerService {
-            -string _logFilePath
-            +LoggerService(string logFilePath)
-            +Subscribe(TransactionService service) void
-            -OnTransactionAdded(object? sender, TransactionAddedEventArgs e) void
+            +OnTransactionAdded(sender, TransactionAddedEventArgs) void
         }
     }
 
-    class Program {
-        <<top-level statements>>
-        menu loop
-        input helpers
-        report output
+    namespace Exceptions {
+        class DomainException {
+            <<abstract>>
+        }
+        class BusinessRuleException
+        class ConflictException
+        class StorageException
+        class ConfigurationException
     }
 
-    Transaction --> TransactionType : has
-    TransactionAddedEventArgs --|> EventArgs : inherits
-    TransactionAddedEventArgs --> Transaction : carries
-    TransactionService --> StorageService : uses (constructor injection)
-    TransactionService ..> TransactionAddedEventArgs : raises
+    Transaction --> TransactionType
+    Category --> TransactionType
+    Category ..> DefaultCategories : IsProtected
+    TransactionSummary --> CategoryTotal
+
+    JsonTransactionRepository ..|> ITransactionRepository
+    EfTransactionRepository ..|> ITransactionRepository
+    JsonCategoryRepository ..|> ICategoryRepository
+    EfCategoryRepository ..|> ICategoryRepository
+    EfTransactionRepository --|> EfRepositoryBase
+    EfCategoryRepository --|> EfRepositoryBase
+
+    TransactionService --> ITransactionRepository
+    TransactionService --> ICategoryRepository
+    CategoryService --> ICategoryRepository
+    CategoryService --> ITransactionRepository : in-use check
+    ImportService --> ITransactionRepository : source + target
+    ImportService --> ICategoryRepository : source + target
     LoggerService ..> TransactionService : subscribes to TransactionAdded
-    StorageService ..> Transaction : reads / writes JSON
-    Program --> TransactionService : calls
-    Program ..> LoggerService : creates + wires
-    Program ..> StorageService : creates
+
+    BusinessRuleException --|> DomainException
+    ConflictException --|> DomainException
 ```
 
-**Reading the arrows:** `-->` = holds a reference / uses · `--|>` = inheritance · `..>` = depends on (creates, raises, subscribes) · `+` public · `-` private · `#` protected.
+**Reading the arrows:** `-->` uses · `..|>` implements · `--|>` inherits · `..>` depends on ·
+`+` public · `#` protected · `$` static.
 
-**Key rule (from the hints):** only `StorageService` touches files in `data/`. `TransactionService` has no `File.*` calls — that's what makes it testable with a fake storage later (stretch goal → `IStorageService`).
+**Key rule:** services only depend on the two repository interfaces. The JSON and the EF
+Core implementations are exchangeable (chosen by `Storage:Provider`) and are verified by
+the same contract tests.
 
-## Sequence: adding a transaction (FR003, FR004, FR008, FR016)
+## Database (SQLite)
+
+```mermaid
+erDiagram
+    Categories ||--o{ Transactions : "CategoryId (Restrict)"
+    Categories {
+        TEXT Id PK
+        TEXT Name "NOCASE, unique with Type"
+        TEXT Type "Income | Expense"
+    }
+    Transactions {
+        TEXT Id PK
+        INTEGER Timestamp "binary ticks"
+        TEXT Type
+        TEXT CategoryId FK
+        TEXT Description
+        INTEGER Amount "whole cents"
+        TEXT Day "shadow column, local date"
+    }
+```
+
+## Class diagram: API
+
+```mermaid
+classDiagram
+    direction LR
+
+    class TransactionsController {
+        +GetAll(range, type?, categoryId?) 200
+        +GetSummary(range) 200
+        +GetById(id) 200 / 404
+        +Create(CreateTransactionRequest) 201 / 400
+        +Delete(id) 204 / 404
+    }
+    class CategoriesController {
+        +GetAll(type?) 200
+        +GetById(id) 200 / 404
+        +Create(CreateCategoryRequest) 201 / 409
+        +Rename(id, RenameCategoryRequest) 200 / 404 / 409
+        +Delete(id) 204 / 404 / 409
+    }
+    class GlobalExceptionHandler {
+        <<IExceptionHandler>>
+        +TryHandleAsync(context, exception) bool
+    }
+    class RequestTimingMiddleware {
+        <<IMiddleware>>
+    }
+    class ValidateDateRangeAttribute {
+        <<ActionFilter>>
+    }
+    class StorageServiceCollectionExtensions {
+        <<static>>
+        +AddCashStackStorage(services, configuration, auditLog)
+    }
+    class FrontendCorsExtensions {
+        <<static>>
+        +AddFrontendCors(services, configuration)
+        +UseFrontendCors(app)
+    }
+
+    TransactionsController --> TransactionService
+    TransactionsController --> CategoryService : category names
+    CategoriesController --> CategoryService
+    TransactionsController ..> ValidateDateRangeAttribute
+    GlobalExceptionHandler ..> DomainException : 400 / 409
+    GlobalExceptionHandler ..> StorageException : 500
+```
+
+## Sequence: POST /api/v1/transactions (SQLite)
 
 ```mermaid
 sequenceDiagram
-    actor User
-    participant P as Program (menu)
+    actor Client as Front end
+    participant MW as Middleware<br/>(timing, CORS, exception handler)
+    participant C as TransactionsController
     participant TS as TransactionService
-    participant SS as StorageService
-    participant FS as data/yyyy-MM-dd.json
+    participant CR as EfCategoryRepository
+    participant TR as EfTransactionRepository
+    participant DB as SQLite
     participant L as LoggerService
 
-    Note over P,L: Startup: create data/ + logs/, new StorageService, new TransactionService, logger.Subscribe(ts)
-
-    User->>P: choose "Add"
-    P->>User: ask type / description / amount
-    User-->>P: "expense", "Groceries", "42.50"
-    P->>P: Enum.TryParse + decimal.TryParse (retry on invalid)
-    P->>TS: Add(Expense, "Groceries", 42.50)
-    TS->>TS: validate amount > 0, Id = Guid.NewGuid(), Timestamp = DateTimeOffset.Now
-    TS->>SS: Save(transaction)
-    SS->>FS: read file (if exists) and deserialize List
-    SS->>SS: list.Add(transaction)
-    SS->>FS: serialize + write whole list
-    SS-->>TS: ok
-    TS-)L: raise TransactionAdded(e)
-    L->>L: File.AppendAllText(logs/transactions.log)
-    TS-->>P: transaction
-    P->>User: "Added 3f2b... (Expense 42.50)"
+    Client->>MW: POST { type, categoryId, description, amount }
+    MW->>C: model binding + DataAnnotations (400 on error)
+    C->>TS: AddAsync(type, description, amount, categoryId)
+    TS->>CR: GetByIdAsync(categoryId)
+    CR->>DB: SELECT category
+    alt unknown category or other type
+        TS--)MW: throw BusinessRuleException
+        MW-->>Client: 400 ProblemDetails (our message)
+    else category ok
+        TS->>TS: new Transaction(...) validates amount and description
+        TS->>TR: AddAsync(transaction)
+        TR->>DB: INSERT (Amount in cents, Day = local date)
+        TS-)L: raise TransactionAdded
+        L->>L: append line to logs/transactions.log
+        TS-->>C: transaction
+        C-->>Client: 201 Created + Location + TransactionResponse (with category name)
+    end
 ```
 
-## Sequence: report (FR006)
+## Sequence: DELETE /api/v1/categories/{id} (category in use)
 
 ```mermaid
 sequenceDiagram
-    actor User
-    participant P as Program
-    participant TS as TransactionService
-    participant SS as StorageService
+    actor Client as Front end
+    participant C as CategoriesController
+    participant CS as CategoryService
+    participant CR as ICategoryRepository
+    participant TR as ITransactionRepository
+    participant H as GlobalExceptionHandler
 
-    User->>P: choose "Report", from / to / type filter
-    P->>TS: GetTransactions(from, to, type?)
-    TS->>SS: LoadRange(from, to)
-    SS->>SS: Directory.GetFiles(data, "*.json")<br/>keep files whose name parses to a date in range
-    SS-->>TS: IEnumerable of Transaction (SelectMany)
-    TS-->>P: filtered by type (Where)
-    P->>P: Sum income, Sum expenses, balance = income - expenses
-    P->>User: table + totals
+    Client->>C: DELETE /categories/{id}
+    C->>CS: DeleteAsync(id)
+    CS->>CR: GetByIdAsync(id)
+    alt not found
+        CS-->>C: false
+        C-->>Client: 404
+    else protected "Other"
+        CS--)H: throw ConflictException
+        H-->>Client: 409 "Category 'Other' is protected …"
+    else used by transactions
+        CS->>TR: AnyWithCategoryAsync(id) = true
+        CS--)H: throw ConflictException
+        H-->>Client: 409 "Category 'Rent' is used by transactions …"
+    else unused
+        CS->>CR: RemoveAsync(id)
+        C-->>Client: 204
+    end
 ```
