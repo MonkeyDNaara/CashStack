@@ -10,6 +10,10 @@ public class CreateTransactionRequest
     [Required]
     public TransactionType? Type { get; init; }
 
+    // Must belong to the same type (checked in TransactionService → 400)
+    [Required]
+    public Guid? CategoryId { get; init; }
+
     [Required]
     [StringLength(100)]
     public string Description { get; init; } = string.Empty;

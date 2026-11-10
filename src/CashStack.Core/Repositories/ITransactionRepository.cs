@@ -10,9 +10,9 @@ public interface ITransactionRepository
 
     Task<Transaction?> GetByIdAsync(Guid id, CancellationToken ct = default);
 
-    // Inclusive range by the local date of the timestamp, ordered by timestamp
+    // Inclusive range by the local date of the timestamp, ordered by timestamp; type and category are optional filters
     Task<IReadOnlyList<Transaction>> GetRangeAsync(
-        DateOnly from, DateOnly to, TransactionType? type = null, CancellationToken ct = default);
+        DateOnly from, DateOnly to, TransactionType? type = null, Guid? categoryId = null, CancellationToken ct = default);
 
     Task<bool> RemoveAsync(Guid id, CancellationToken ct = default);
 
