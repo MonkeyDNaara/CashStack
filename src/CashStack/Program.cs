@@ -3,27 +3,43 @@ using CashStack.Services;
 using CashStack.Models;
 using CashStack.Exceptions;
 using CashStack.Repositories;
+using CashStack.Configuration;
 using CashStack.Data;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 
 const string DateFormat = "yyyy-MM-dd";
-// Moves to configuration with the provider switch (#82)
-const string ConnectionString = "Data Source=data/cashstack.db";
+
+// Same keys as the API: Storage:Provider, Storage:DataDirectory, Storage:LogDirectory, ConnectionStrings:CashStack
+IConfiguration configuration = new ConfigurationBuilder()
+    .SetBasePath(AppContext.BaseDirectory)
+    .AddJsonFile("appsettings.json", optional: true)
+    .Build();
 
 ITransactionRepository repository;
 ICategoryRepository categoryRepository;
+// One DbContext for the whole session: the console has a single user and no parallel requests
+CashStackDbContext? dbContext = null;
 try
 {
-    DbContextOptions<CashStackDbContext> dbOptions = new DbContextOptionsBuilder<CashStackDbContext>()
-        .UseSqlite(ConnectionString)
-        .Options;
-    await using (var dbContext = new CashStackDbContext(dbOptions))
+    StorageSettings settings = StorageSettings.FromConfiguration(configuration);
+    if (settings.Provider == StorageProvider.Sqlite)
     {
+        DbContextOptions<CashStackDbContext> dbOptions = new DbContextOptionsBuilder<CashStackDbContext>()
+            .UseSqlite(settings.ConnectionString)
+            .Options;
+        dbContext = new CashStackDbContext(dbOptions);
         await DatabaseInitializer.InitializeAsync(dbContext);
-    }
 
-    repository = new JsonTransactionRepository("data");
-    categoryRepository = new JsonCategoryRepository("data");
+        repository = new EfTransactionRepository(dbContext);
+        categoryRepository = new EfCategoryRepository(dbContext);
+    }
+    else
+    {
+        repository = new JsonTransactionRepository(settings.DataDirectory);
+        categoryRepository = new JsonCategoryRepository(settings.DataDirectory);
+    }
+    Console.WriteLine($"Storage: {settings.Provider}");
 }
 catch (StorageException ex)
 {
@@ -31,10 +47,16 @@ catch (StorageException ex)
     Environment.ExitCode = 1;
     return;
 }
+catch (ConfigurationException ex)
+{
+    Console.Error.WriteLine($"Error: {ex.Message}");
+    Environment.ExitCode = 1;
+    return;
+}
 var transactions = new TransactionService(repository, categoryRepository);
 try
 {
-    var logger = new LoggerService("logs");
+    var logger = new LoggerService(configuration["Storage:LogDirectory"] ?? "logs");
     transactions.TransactionAdded += logger.OnTransactionAdded;
 }
 catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
@@ -80,6 +102,11 @@ while (running)
 }
 
 Console.WriteLine("Goodbye!");
+
+if (dbContext is not null)
+{
+    await dbContext.DisposeAsync();
+}
 
 // ---------- Menu ----------
 
