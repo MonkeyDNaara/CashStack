@@ -54,6 +54,8 @@ catch (ConfigurationException ex)
     return;
 }
 var transactions = new TransactionService(repository, categoryRepository);
+// The console only selects categories; managing them happens via the API / front end
+var categories = new CategoryService(categoryRepository, repository);
 try
 {
     var logger = new LoggerService(configuration["Storage:LogDirectory"] ?? "logs");
@@ -127,11 +129,12 @@ async Task AddTransactionAsync()
     PrintHeader("Add transaction");
 
     TransactionType type = ReadType("Type (i = income, e = expense): ");
+    Category category = await ReadCategoryAsync(type);
     string description = ReadText("Description: ");
     decimal amount = ReadAmount("Amount: ");
 
-    Transaction transaction = await transactions.AddAsync(type, description, amount);
-    Console.WriteLine($"Added: {FormatTransaction(transaction)}");
+    Transaction transaction = await transactions.AddAsync(type, description, amount, category.Id);
+    Console.WriteLine($"Added: {FormatTransaction(transaction, category.Name)}");
 }
 
 async Task RemoveTransactionAsync()
@@ -148,7 +151,7 @@ async Task RemoveTransactionAsync()
     }
 
     Console.WriteLine();
-    PrintTransactions(list);
+    PrintTransactions(list, await GetCategoryNamesAsync());
 
     int number = ReadNumber("Number to remove (0 = cancel): ", 0, list.Count);
     if (number == 0)
@@ -187,7 +190,7 @@ async Task ShowReportAsync()
     }
     else
     {
-        PrintTransactions(list);
+        PrintTransactions(list, await GetCategoryNamesAsync());
     }
 
     TransactionSummary summary = await transactions.GetSummaryAsync(from, to);
@@ -196,6 +199,18 @@ async Task ShowReportAsync()
     Console.WriteLine($"  Income:   {FormatAmount(summary.Income),12}");
     Console.WriteLine($"  Expenses: {FormatAmount(summary.Expenses),12}");
     Console.WriteLine($"  Balance:  {FormatAmount(summary.Balance),12}");
+
+    // Totals per category (GroupBy in TransactionService); they add up to income and expenses above
+    if (summary.Categories.Count > 0)
+    {
+        Console.WriteLine();
+        Console.WriteLine("By category:");
+        foreach (CategoryTotal total in summary.Categories)
+        {
+            string sign = total.Type == TransactionType.Expense ? "-" : "+";
+            Console.WriteLine($"  {total.Type,-7} | {total.Name,-20} | {sign + FormatAmount(total.Total),12}");
+        }
+    }
 }
 
 // ---------- Output helpers ----------
@@ -206,18 +221,26 @@ void PrintHeader(string title)
     Console.WriteLine($"--- {title} ---");
 }
 
-void PrintTransactions(IReadOnlyList<Transaction> list)
+void PrintTransactions(IReadOnlyList<Transaction> list, Dictionary<Guid, string> categoryNames)
 {
     for (int i = 0; i < list.Count; i++)
     {
-        Console.WriteLine($"{i + 1,3}) {FormatTransaction(list[i])}");
+        string categoryName = categoryNames.GetValueOrDefault(list[i].CategoryId, "Unknown");
+        Console.WriteLine($"{i + 1,3}) {FormatTransaction(list[i], categoryName)}");
     }
 }
 
-string FormatTransaction(Transaction t)
+string FormatTransaction(Transaction t, string categoryName)
 {
     string timestamp = t.Timestamp.ToString("yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture);
-    return $"{timestamp} | {t.Type,-7} | {FormatSignedAmount(t),10} | {t.Description}";
+    return $"{timestamp} | {t.Type,-7} | {categoryName,-15} | {FormatSignedAmount(t),10} | {t.Description}";
+}
+
+// One query for all names instead of one per transaction
+async Task<Dictionary<Guid, string>> GetCategoryNamesAsync()
+{
+    IReadOnlyList<Category> all = await categories.GetAllAsync();
+    return all.ToDictionary(c => c.Id, c => c.Name);
 }
 
 string FormatSignedAmount(Transaction t)
@@ -298,6 +321,20 @@ TransactionType ReadType(string message)
 
         Console.WriteLine("  Please enter 'i' (income) or 'e' (expense).");
     }
+}
+
+// Lists the categories of the chosen type and lets the user pick one by number
+async Task<Category> ReadCategoryAsync(TransactionType type)
+{
+    IReadOnlyList<Category> options = await categories.GetAllAsync(type);
+    Console.WriteLine($"Categories ({type}):");
+    for (int i = 0; i < options.Count; i++)
+    {
+        Console.WriteLine($"{i + 1,3}) {options[i].Name}");
+    }
+
+    int number = ReadNumber("Category number: ", 1, options.Count);
+    return options[number - 1];
 }
 
 TransactionType? ReadTypeFilter(string message)
