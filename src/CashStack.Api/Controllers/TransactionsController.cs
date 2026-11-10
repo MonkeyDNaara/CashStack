@@ -11,19 +11,24 @@ namespace CashStack.Api.Controllers;
 public class TransactionsController : ControllerBase
 {
     private readonly TransactionService _service;
+    private readonly CategoryService _categories;
 
-    public TransactionsController(TransactionService service)
+    public TransactionsController(TransactionService service, CategoryService categories)
     {
         _service = service;
+        _categories = categories;
     }
 
     [HttpGet]
     [ValidateDateRange]
     public async Task<ActionResult<List<TransactionResponse>>> GetAll(
-        [FromQuery] DateRangeQuery range, [FromQuery] TransactionType? type, CancellationToken ct)
+        [FromQuery] DateRangeQuery range, [FromQuery] TransactionType? type, [FromQuery] Guid? categoryId,
+        CancellationToken ct)
     {
-        IReadOnlyList<Transaction> transactions = await _service.GetTransactionsAsync(range.Start, range.End, type, ct);
-        return Ok(transactions.Select(TransactionResponse.From).ToList());
+        IReadOnlyList<Transaction> transactions =
+            await _service.GetTransactionsAsync(range.Start, range.End, type, categoryId, ct);
+        Dictionary<Guid, string> names = await GetCategoryNamesAsync(ct);
+        return Ok(transactions.Select(t => ToResponse(t, names)).ToList());
     }
 
     [HttpGet("summary")]
@@ -42,14 +47,15 @@ public class TransactionsController : ControllerBase
         {
             return NotFound();
         }
-        return Ok(TransactionResponse.From(transaction));
+        return Ok(ToResponse(transaction, await GetCategoryNamesAsync(ct)));
     }
 
     [HttpPost]
     public async Task<ActionResult<TransactionResponse>> Create(CreateTransactionRequest request, CancellationToken ct)
     {
-        Transaction transaction = await _service.AddAsync(request.Type!.Value, request.Description, request.Amount, ct: ct);
-        var response = TransactionResponse.From(transaction);
+        Transaction transaction = await _service.AddAsync(
+            request.Type!.Value, request.Description, request.Amount, request.CategoryId!.Value, ct);
+        var response = ToResponse(transaction, await GetCategoryNamesAsync(ct));
         return CreatedAtAction(nameof(GetById), new { id = transaction.Id }, response);
     }
 
@@ -58,4 +64,14 @@ public class TransactionsController : ControllerBase
     {
         return await _service.RemoveAsync(id, ct) ? NoContent() : NotFound();
     }
+
+    // One query for all category names instead of one per transaction
+    private async Task<Dictionary<Guid, string>> GetCategoryNamesAsync(CancellationToken ct)
+    {
+        IReadOnlyList<Category> categories = await _categories.GetAllAsync(ct: ct);
+        return categories.ToDictionary(c => c.Id, c => c.Name);
+    }
+
+    private static TransactionResponse ToResponse(Transaction transaction, Dictionary<Guid, string> names) =>
+        TransactionResponse.From(transaction, names.GetValueOrDefault(transaction.CategoryId, "Unknown"));
 }

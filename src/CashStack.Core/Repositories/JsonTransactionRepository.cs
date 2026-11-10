@@ -50,7 +50,7 @@ public class JsonTransactionRepository : ITransactionRepository
     }
 
     public async Task<IReadOnlyList<Transaction>> GetRangeAsync(
-        DateOnly from, DateOnly to, TransactionType? type = null, CancellationToken ct = default)
+        DateOnly from, DateOnly to, TransactionType? type = null, Guid? categoryId = null, CancellationToken ct = default)
     {
         var result = new List<Transaction>();
         foreach (string path in GetJsonFiles().Where(path => IsInRange(path, from, to)))
@@ -59,6 +59,7 @@ public class JsonTransactionRepository : ITransactionRepository
         }
         return result
             .Where(t => type is null || t.Type == type)
+            .Where(t => categoryId is null || t.CategoryId == categoryId)
             .OrderBy(t => t.Timestamp)
             .ToList();
     }

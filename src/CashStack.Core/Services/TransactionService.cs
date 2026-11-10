@@ -46,10 +46,10 @@ public class TransactionService
         _repository.RemoveAsync(id, ct);
 
     public Task<IReadOnlyList<Transaction>> GetTransactionsAsync(
-        DateOnly from, DateOnly to, TransactionType? type = null, CancellationToken ct = default)
+        DateOnly from, DateOnly to, TransactionType? type = null, Guid? categoryId = null, CancellationToken ct = default)
     {
         EnsureValidRange(from, to);
-        return _repository.GetRangeAsync(from, to, type, ct);
+        return _repository.GetRangeAsync(from, to, type, categoryId, ct);
     }
 
     public async Task<TransactionSummary> GetSummaryAsync(DateOnly from, DateOnly to, CancellationToken ct = default)
@@ -57,7 +57,22 @@ public class TransactionService
         IReadOnlyList<Transaction> transactions = await GetTransactionsAsync(from, to, ct: ct);
         decimal income = transactions.Where(t => t.Type == TransactionType.Income).Sum(t => t.Amount);
         decimal expenses = transactions.Where(t => t.Type == TransactionType.Expense).Sum(t => t.Amount);
-        return new TransactionSummary(income, expenses);
+
+        // Names come from the category repository, the totals from GroupBy over the period
+        Dictionary<Guid, string> names = (await _categories.GetAllAsync(ct: ct)).ToDictionary(c => c.Id, c => c.Name);
+        List<CategoryTotal> categories = transactions
+            .GroupBy(t => new { t.CategoryId, t.Type })
+            .Select(g => new CategoryTotal(
+                g.Key.CategoryId,
+                names.GetValueOrDefault(g.Key.CategoryId, "Unknown"),
+                g.Key.Type,
+                g.Sum(t => t.Amount)))
+            .OrderBy(c => c.Type)
+            .ThenByDescending(c => c.Total)
+            .ThenBy(c => c.Name, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        return new TransactionSummary(income, expenses, categories);
     }
 
     // Business rule: a transaction can only use an existing category of the same type

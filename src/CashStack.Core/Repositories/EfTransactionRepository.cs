@@ -22,7 +22,7 @@ public class EfTransactionRepository : EfRepositoryBase, ITransactionRepository
             .FirstOrDefaultAsync(t => t.Id == id, ct));
 
     public Task<IReadOnlyList<Transaction>> GetRangeAsync(
-        DateOnly from, DateOnly to, TransactionType? type = null, CancellationToken ct = default) =>
+        DateOnly from, DateOnly to, TransactionType? type = null, Guid? categoryId = null, CancellationToken ct = default) =>
         ExecuteAsync<IReadOnlyList<Transaction>>(async () =>
         {
             // "Day" = local date of the timestamp (shadow property), same rule as one JSON file per day
@@ -34,6 +34,11 @@ public class EfTransactionRepository : EfRepositoryBase, ITransactionRepository
             if (type is not null)
             {
                 query = query.Where(t => t.Type == type);
+            }
+
+            if (categoryId is not null)
+            {
+                query = query.Where(t => t.CategoryId == categoryId);
             }
 
             return await query.OrderBy(t => t.Timestamp).ToListAsync(ct);
