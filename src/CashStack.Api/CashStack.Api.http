@@ -65,3 +65,106 @@ Content-Type: application/json
   "description": " ",
   "amount": 1.234
 }
+
+# ---------- Categories ----------
+# Ids of the protected "Other" categories (DefaultCategories)
+@categories = {{host}}/api/v1/categories
+@otherIncome = 6f0b8a52-1c3e-4c1a-9a51-000000000001
+@otherExpense = 6f0b8a52-1c3e-4c1a-9a51-000000000002
+
+### Categories: list all (200, Income first, then by name)
+GET {{categories}}
+Accept: application/json
+
+### Categories: list by type (200)
+GET {{categories}}?type=Expense
+Accept: application/json
+
+### Categories: invalid type (400)
+GET {{categories}}?type=xyz
+
+### Categories: get by id (200, isProtected = true)
+GET {{categories}}/{{otherExpense}}
+Accept: application/json
+
+### Categories: get unknown id (404)
+GET {{categories}}/00000000-0000-0000-0000-000000000000
+
+### Categories: create (201 + Location header)
+# @name createCategory
+POST {{categories}}
+Content-Type: application/json
+
+{
+  "name": "Subscriptions",
+  "type": "Expense"
+}
+
+### Categories: create duplicate, other case (409)
+POST {{categories}}
+Content-Type: application/json
+
+{
+  "name": "  subscriptions ",
+  "type": "Expense"
+}
+
+### Categories: same name for the other type (201)
+POST {{categories}}
+Content-Type: application/json
+
+{
+  "name": "Subscriptions",
+  "type": "Income"
+}
+
+### Categories: create without type, name too long (400)
+POST {{categories}}
+Content-Type: application/json
+
+{
+  "name": "This name is far too long for a category, it has more than fifty characters"
+}
+
+### Categories: rename (200)
+PUT {{categories}}/{{createCategory.response.body.$.id}}
+Content-Type: application/json
+
+{
+  "name": "Streaming"
+}
+
+### Categories: rename to an existing name (409)
+PUT {{categories}}/{{createCategory.response.body.$.id}}
+Content-Type: application/json
+
+{
+  "name": "Groceries"
+}
+
+### Categories: rename protected "Other" (409)
+PUT {{categories}}/{{otherIncome}}
+Content-Type: application/json
+
+{
+  "name": "Misc"
+}
+
+### Categories: rename unknown id (404)
+PUT {{categories}}/00000000-0000-0000-0000-000000000000
+Content-Type: application/json
+
+{
+  "name": "Misc"
+}
+
+### Categories: delete protected "Other" (409)
+DELETE {{categories}}/{{otherExpense}}
+
+### Categories: delete (204)
+DELETE {{categories}}/{{createCategory.response.body.$.id}}
+
+### Categories: delete again (404)
+DELETE {{categories}}/{{createCategory.response.body.$.id}}
+
+# "Delete a category in use" (409) becomes reachable with #84, when transactions accept a categoryId
