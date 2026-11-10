@@ -1,6 +1,8 @@
+using CashStack.Api.ErrorHandling;
 using CashStack.Api.Middleware;
 using CashStack.Services;
 using Microsoft.AspNetCore.Mvc.ModelBinding.Metadata;
+using System.Diagnostics;
 using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -16,6 +18,17 @@ builder.Services
         options.AllowInputFormatterExceptionMessages = false;
     });
 builder.Services.AddRequestTiming();
+builder.Services.AddProblemDetails(options =>
+{
+    // Applies to every ProblemDetails response (exceptions, validation, status codes)
+    options.CustomizeProblemDetails = context =>
+    {
+        context.ProblemDetails.Instance = context.HttpContext.Request.Path;
+        context.ProblemDetails.Extensions.TryAdd(
+            "traceId", Activity.Current?.Id ?? context.HttpContext.TraceIdentifier);
+    };
+});
+builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 
 var app = builder.Build();
 
@@ -24,6 +37,8 @@ var logger = app.Services.GetRequiredService<LoggerService>();
 transactionService.TransactionAdded += logger.OnTransactionAdded;
 
 app.UseRequestTiming();
+app.UseExceptionHandler();
+app.UseStatusCodePages();
 
 app.MapControllers();
 
