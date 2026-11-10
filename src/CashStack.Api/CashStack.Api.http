@@ -41,6 +41,12 @@ GET {{base}}/00000000-0000-0000-0000-000000000000
 ### List: invalid type (400)
 GET {{base}}?type=xyz
 
+### List: from after to (400, ValidateDateRange filter)
+GET {{base}}?from=2026-12-01&to=2026-11-01
+
+### Summary: only from, after today (400, to defaults to today)
+GET {{base}}/summary?from=2099-01-01
+
 ### Create: missing type (400)
 POST {{base}}
 Content-Type: application/json

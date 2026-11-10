@@ -1,4 +1,5 @@
 using CashStack.Api.Dtos;
+using CashStack.Api.Filters;
 using CashStack.Models;
 using CashStack.Services;
 using Microsoft.AspNetCore.Mvc;
@@ -17,22 +18,22 @@ public class TransactionsController : ControllerBase
     }
 
     [HttpGet]
+    [ValidateDateRange]
     public ActionResult<List<TransactionResponse>> GetAll(
-        [FromQuery] DateOnly? from, [FromQuery] DateOnly? to, [FromQuery] TransactionType? type)
+        [FromQuery] DateRangeQuery range, [FromQuery] TransactionType? type)
     {
-        var (start, end) = ResolveRange(from, to);
-        var transactions = _service.GetTransactions(start, end, type)
+        var transactions = _service.GetTransactions(range.Start, range.End, type)
             .Select(TransactionResponse.From)
             .ToList();
         return Ok(transactions);
     }
 
     [HttpGet("summary")]
-    public ActionResult<SummaryResponse> GetSummary([FromQuery] DateOnly? from, [FromQuery] DateOnly? to)
+    [ValidateDateRange]
+    public ActionResult<SummaryResponse> GetSummary([FromQuery] DateRangeQuery range)
     {
-        var (start, end) = ResolveRange(from, to);
-        TransactionSummary summary = _service.GetSummary(start, end);
-        return Ok(SummaryResponse.Create(start, end, summary));
+        TransactionSummary summary = _service.GetSummary(range.Start, range.End);
+        return Ok(SummaryResponse.Create(range.Start, range.End, summary));
     }
 
     [HttpGet("{id:guid}")]
@@ -58,13 +59,5 @@ public class TransactionsController : ControllerBase
     public IActionResult Delete(Guid id)
     {
         return _service.Remove(id) ? NoContent() : NotFound();
-    }
-
-    // Default range: first day of the month of 'to' (default today) until 'to'
-    private static (DateOnly From, DateOnly To) ResolveRange(DateOnly? from, DateOnly? to)
-    {
-        DateOnly end = to ?? DateOnly.FromDateTime(DateTime.Now);
-        DateOnly start = from ?? new DateOnly(end.Year, end.Month, 1);
-        return (start, end);
     }
 }
