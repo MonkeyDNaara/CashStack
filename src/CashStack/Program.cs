@@ -2,13 +2,14 @@
 using CashStack.Services;
 using CashStack.Models;
 using CashStack.Exceptions;
+using CashStack.Repositories;
 
 const string DateFormat = "yyyy-MM-dd";
 
-StorageService storage;
+ITransactionRepository repository;
 try
 {
-    storage = new StorageService("data");
+    repository = new JsonTransactionRepository("data");
 }
 catch (StorageException ex)
 {
@@ -16,7 +17,7 @@ catch (StorageException ex)
     Environment.ExitCode = 1;
     return;
 }
-var transactions = new TransactionService(storage);
+var transactions = new TransactionService(repository);
 try
 {
     var logger = new LoggerService("logs");
@@ -38,13 +39,13 @@ while (running)
         switch (choice)
         {
             case "1":
-                AddTransaction();
+                await AddTransactionAsync();
                 break;
             case "2":
-                RemoveTransaction();
+                await RemoveTransactionAsync();
                 break;
             case "3":
-                ShowReport();
+                await ShowReportAsync();
                 break;
             case "0":
                 running = false;
@@ -80,7 +81,7 @@ void PrintMenu()
 
 // ---------- Flows ----------
 
-void AddTransaction()
+async Task AddTransactionAsync()
 {
     PrintHeader("Add transaction");
 
@@ -88,18 +89,16 @@ void AddTransaction()
     string description = ReadText("Description: ");
     decimal amount = ReadAmount("Amount: ");
 
-    Transaction transaction = transactions.Add(type, description, amount);
+    Transaction transaction = await transactions.AddAsync(type, description, amount);
     Console.WriteLine($"Added: {FormatTransaction(transaction)}");
 }
 
-void RemoveTransaction()
+async Task RemoveTransactionAsync()
 {
     PrintHeader("Remove transaction");
 
     var (from, to) = ReadDateRange();
-    List<Transaction> list = transactions.GetTransactions(from, to)
-        .OrderBy(t => t.Timestamp)
-        .ToList();
+    IReadOnlyList<Transaction> list = await transactions.GetTransactionsAsync(from, to);
 
     if (list.Count == 0)
     {
@@ -124,20 +123,18 @@ void RemoveTransaction()
         return;
     }
 
-    bool removed = transactions.Remove(selected.Id);
+    bool removed = await transactions.RemoveAsync(selected.Id);
     Console.WriteLine(removed ? "Transaction removed." : "Transaction not found. It may have been removed already.");
 }
 
-void ShowReport()
+async Task ShowReportAsync()
 {
     PrintHeader("Report");
 
     var (from, to) = ReadDateRange();
     TransactionType? typeFilter = ReadTypeFilter("Type (i = income, e = expense, Enter = all): ");
 
-    List<Transaction> list = transactions.GetTransactions(from, to, typeFilter)
-        .OrderBy(t => t.Timestamp)
-        .ToList();
+    IReadOnlyList<Transaction> list = await transactions.GetTransactionsAsync(from, to, typeFilter);
 
     string filterText = typeFilter?.ToString() ?? "All types";
     Console.WriteLine();
@@ -152,7 +149,7 @@ void ShowReport()
         PrintTransactions(list);
     }
 
-    TransactionSummary summary = transactions.GetSummary(from, to);
+    TransactionSummary summary = await transactions.GetSummaryAsync(from, to);
     Console.WriteLine();
     Console.WriteLine("Summary for this period (all types):");
     Console.WriteLine($"  Income:   {FormatAmount(summary.Income),12}");
@@ -168,7 +165,7 @@ void PrintHeader(string title)
     Console.WriteLine($"--- {title} ---");
 }
 
-void PrintTransactions(List<Transaction> list)
+void PrintTransactions(IReadOnlyList<Transaction> list)
 {
     for (int i = 0; i < list.Count; i++)
     {

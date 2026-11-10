@@ -1,6 +1,7 @@
 using CashStack.Api.ErrorHandling;
 using CashStack.Api.Middleware;
 using CashStack.Exceptions;
+using CashStack.Repositories;
 using CashStack.Services;
 using Microsoft.AspNetCore.Mvc.ModelBinding.Metadata;
 using System.Diagnostics;
@@ -8,7 +9,8 @@ using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddSingleton(_ => new StorageService(builder.Configuration["Storage:DataDirectory"] ?? "data"));
+builder.Services.AddSingleton<ITransactionRepository>(
+    _ => new JsonTransactionRepository(builder.Configuration["Storage:DataDirectory"] ?? "data"));
 builder.Services.AddSingleton<TransactionService>();
 builder.Services.AddSingleton(_ => new LoggerService(builder.Configuration["Storage:LogDirectory"] ?? "logs"));
 builder.Services

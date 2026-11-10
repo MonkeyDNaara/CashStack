@@ -1,19 +1,22 @@
-using CashStack.Models;
 using CashStack.Events;
+using CashStack.Models;
+using CashStack.Repositories;
 
 namespace CashStack.Services;
 
 public class TransactionService
 {
-    private readonly StorageService _storage;
+    private readonly ITransactionRepository _repository;
     public event EventHandler<TransactionAddedEventArgs>? TransactionAdded;
 
-    public TransactionService(StorageService storage)
+    // Depends on the interface only: the caller decides which storage is used
+    public TransactionService(ITransactionRepository repository)
     {
-        _storage = storage;
+        _repository = repository;
     }
 
-    public Transaction Add(TransactionType type, string description, decimal amount)
+    public async Task<Transaction> AddAsync(
+        TransactionType type, string description, decimal amount, CancellationToken ct = default)
     {
         var transaction = new Transaction(
             Guid.NewGuid(),
@@ -23,31 +26,39 @@ public class TransactionService
             amount
         );
 
-        _storage.Save(transaction);
+        await _repository.AddAsync(transaction, ct);
         TransactionAdded?.Invoke(this, new TransactionAddedEventArgs(transaction));
 
         return transaction;
     }
 
-    public Transaction? GetById(Guid id) => _storage.GetById(id);
+    public Task<Transaction?> GetByIdAsync(Guid id, CancellationToken ct = default) =>
+        _repository.GetByIdAsync(id, ct);
 
-    public bool Remove(Guid id) => _storage.Remove(id);
+    public Task<bool> RemoveAsync(Guid id, CancellationToken ct = default) =>
+        _repository.RemoveAsync(id, ct);
 
-    public List<Transaction> GetTransactions(DateOnly from, DateOnly to, TransactionType? type = null)
+    public Task<IReadOnlyList<Transaction>> GetTransactionsAsync(
+        DateOnly from, DateOnly to, TransactionType? type = null, CancellationToken ct = default)
     {
-        var transactions = _storage.Load(from, to);
-        if (type == null)
-        {
-            return transactions;
-        }
-        return transactions.Where(t => t.Type == type).ToList();
+        EnsureValidRange(from, to);
+        return _repository.GetRangeAsync(from, to, type, ct);
     }
 
-    public TransactionSummary GetSummary(DateOnly from, DateOnly to)
+    public async Task<TransactionSummary> GetSummaryAsync(DateOnly from, DateOnly to, CancellationToken ct = default)
     {
-        var transactions = _storage.Load(from, to);
+        IReadOnlyList<Transaction> transactions = await GetTransactionsAsync(from, to, ct: ct);
         decimal income = transactions.Where(t => t.Type == TransactionType.Income).Sum(t => t.Amount);
         decimal expenses = transactions.Where(t => t.Type == TransactionType.Expense).Sum(t => t.Amount);
         return new TransactionSummary(income, expenses);
+    }
+
+    // Business rule, checked once here instead of in every repository implementation
+    private static void EnsureValidRange(DateOnly from, DateOnly to)
+    {
+        if (from > to)
+        {
+            throw new ArgumentException("From-date is after to-date", nameof(from));
+        }
     }
 }
