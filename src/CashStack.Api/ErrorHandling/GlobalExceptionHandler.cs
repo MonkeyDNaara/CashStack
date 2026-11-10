@@ -46,6 +46,16 @@ public sealed class GlobalExceptionHandler : IExceptionHandler
     {
         return exception switch
         {
+            // Domain messages are written by us and safe to show, e.g. "A category named 'Rent' already exists."
+            // Matching the base types means new rules need no change here (polymorphism)
+            ConflictException => (
+                StatusCodes.Status409Conflict,
+                "Conflict",
+                exception.Message),
+            BusinessRuleException => (
+                StatusCodes.Status400BadRequest,
+                "Business rule violated",
+                exception.Message),
             StorageException => (
                 StatusCodes.Status500InternalServerError,
                 "Storage error",

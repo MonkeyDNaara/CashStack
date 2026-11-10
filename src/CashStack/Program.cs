@@ -7,9 +7,11 @@ using CashStack.Repositories;
 const string DateFormat = "yyyy-MM-dd";
 
 ITransactionRepository repository;
+ICategoryRepository categoryRepository;
 try
 {
     repository = new JsonTransactionRepository("data");
+    categoryRepository = new JsonCategoryRepository("data");
 }
 catch (StorageException ex)
 {
@@ -17,7 +19,7 @@ catch (StorageException ex)
     Environment.ExitCode = 1;
     return;
 }
-var transactions = new TransactionService(repository);
+var transactions = new TransactionService(repository, categoryRepository);
 try
 {
     var logger = new LoggerService("logs");

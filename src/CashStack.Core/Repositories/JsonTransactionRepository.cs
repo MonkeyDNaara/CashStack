@@ -1,6 +1,5 @@
 using System.Globalization;
 using System.Text.Json;
-using System.Text.Json.Serialization;
 using CashStack.Exceptions;
 using CashStack.Models;
 
@@ -11,12 +10,6 @@ public class JsonTransactionRepository : ITransactionRepository
 {
     private const string DateFormat = "yyyy-MM-dd";
 
-    private static readonly JsonSerializerOptions _options = new JsonSerializerOptions
-    {
-        WriteIndented = true,
-        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-        Converters = { new JsonStringEnumConverter() }
-    };
     private readonly string _dataDirectory;
 
     public JsonTransactionRepository(string dataDirectory)
@@ -84,6 +77,19 @@ public class JsonTransactionRepository : ITransactionRepository
         return false;
     }
 
+    public async Task<bool> AnyWithCategoryAsync(Guid categoryId, CancellationToken ct = default)
+    {
+        foreach (string path in GetDayFiles())
+        {
+            List<Transaction> transactions = await ReadFileAsync(path, ct);
+            if (transactions.Exists(t => t.CategoryId == categoryId))
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
     // Helper functions
     private static bool IsInRange(string path, DateOnly from, DateOnly to)
     {
@@ -118,7 +124,8 @@ public class JsonTransactionRepository : ITransactionRepository
         try
         {
             string jsonIn = await File.ReadAllTextAsync(path, ct);
-            return JsonSerializer.Deserialize<List<Transaction>>(jsonIn, _options) ?? [];
+            List<Transaction> transactions = JsonSerializer.Deserialize<List<Transaction>>(jsonIn, JsonStorage.Options) ?? [];
+            return transactions.ConvertAll(WithDefaultCategory);
         }
         catch (Exception ex) when (ex is JsonException or IOException or UnauthorizedAccessException or ArgumentException)
         {
@@ -126,11 +133,22 @@ public class JsonTransactionRepository : ITransactionRepository
         }
     }
 
+    // Day files written before categories existed have no categoryId (→ Guid.Empty):
+    // they belong to "Other" of their type
+    private static Transaction WithDefaultCategory(Transaction t)
+    {
+        if (t.CategoryId != Guid.Empty)
+        {
+            return t;
+        }
+        return new Transaction(t.Id, t.Timestamp, t.Type, DefaultCategories.GetOtherId(t.Type), t.Description, t.Amount);
+    }
+
     private static async Task WriteFileAsync(string path, List<Transaction> transactions, CancellationToken ct)
     {
         try
         {
-            string jsonPretty = JsonSerializer.Serialize(transactions, _options);
+            string jsonPretty = JsonSerializer.Serialize(transactions, JsonStorage.Options);
             await File.WriteAllTextAsync(path, jsonPretty, ct);
         }
         catch (Exception ex) when (ex is JsonException or IOException or UnauthorizedAccessException)
