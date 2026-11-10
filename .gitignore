@@ -438,6 +438,11 @@ Temporary Items
 data/
 # Source folder, not runtime data (macOS is case-insensitive: data/ would match Data/)
 !src/CashStack.Core/Data/
+
+# SQLite database files (incl. write-ahead log)
+*.db
+*.db-shm
+*.db-wal
 logs/
 docs/planning/create_issues.py
 docs/project_instructions_files/
