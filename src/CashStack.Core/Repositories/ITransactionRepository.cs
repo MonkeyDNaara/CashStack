@@ -15,4 +15,7 @@ public interface ITransactionRepository
         DateOnly from, DateOnly to, TransactionType? type = null, CancellationToken ct = default);
 
     Task<bool> RemoveAsync(Guid id, CancellationToken ct = default);
+
+    // Used before deleting a category: a category in use must not be deleted
+    Task<bool> AnyWithCategoryAsync(Guid categoryId, CancellationToken ct = default);
 }

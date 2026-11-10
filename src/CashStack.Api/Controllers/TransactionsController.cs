@@ -48,7 +48,7 @@ public class TransactionsController : ControllerBase
     [HttpPost]
     public async Task<ActionResult<TransactionResponse>> Create(CreateTransactionRequest request, CancellationToken ct)
     {
-        Transaction transaction = await _service.AddAsync(request.Type!.Value, request.Description, request.Amount, ct);
+        Transaction transaction = await _service.AddAsync(request.Type!.Value, request.Description, request.Amount, ct: ct);
         var response = TransactionResponse.From(transaction);
         return CreatedAtAction(nameof(GetById), new { id = transaction.Id }, response);
     }

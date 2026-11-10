@@ -1,4 +1,5 @@
 using CashStack.Events;
+using CashStack.Exceptions;
 using CashStack.Models;
 using CashStack.Repositories;
 
@@ -7,21 +8,27 @@ namespace CashStack.Services;
 public class TransactionService
 {
     private readonly ITransactionRepository _repository;
+    private readonly ICategoryRepository _categories;
     public event EventHandler<TransactionAddedEventArgs>? TransactionAdded;
 
     // Depends on the interface only: the caller decides which storage is used
-    public TransactionService(ITransactionRepository repository)
+    public TransactionService(ITransactionRepository repository, ICategoryRepository categories)
     {
         _repository = repository;
+        _categories = categories;
     }
 
     public async Task<Transaction> AddAsync(
-        TransactionType type, string description, decimal amount, CancellationToken ct = default)
+        TransactionType type, string description, decimal amount, Guid? categoryId = null, CancellationToken ct = default)
     {
+        // No category chosen → "Other" of the type, so callers without category selection keep working
+        Category category = await GetMatchingCategoryAsync(categoryId ?? DefaultCategories.GetOtherId(type), type, ct);
+
         var transaction = new Transaction(
             Guid.NewGuid(),
             DateTimeOffset.Now,
             type,
+            category.Id,
             description,
             amount
         );
@@ -51,6 +58,21 @@ public class TransactionService
         decimal income = transactions.Where(t => t.Type == TransactionType.Income).Sum(t => t.Amount);
         decimal expenses = transactions.Where(t => t.Type == TransactionType.Expense).Sum(t => t.Amount);
         return new TransactionSummary(income, expenses);
+    }
+
+    // Business rule: a transaction can only use an existing category of the same type
+    private async Task<Category> GetMatchingCategoryAsync(Guid categoryId, TransactionType type, CancellationToken ct)
+    {
+        Category category = await _categories.GetByIdAsync(categoryId, ct)
+            ?? throw new BusinessRuleException($"Category '{categoryId}' does not exist.");
+
+        if (category.Type != type)
+        {
+            throw new BusinessRuleException(
+                $"Category '{category.Name}' belongs to {category.Type} and cannot be used for {type}.");
+        }
+
+        return category;
     }
 
     // Business rule, checked once here instead of in every repository implementation

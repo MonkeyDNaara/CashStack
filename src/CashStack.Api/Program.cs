@@ -9,9 +9,11 @@ using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddSingleton<ITransactionRepository>(
-    _ => new JsonTransactionRepository(builder.Configuration["Storage:DataDirectory"] ?? "data"));
+string dataDirectory = builder.Configuration["Storage:DataDirectory"] ?? "data";
+builder.Services.AddSingleton<ITransactionRepository>(_ => new JsonTransactionRepository(dataDirectory));
+builder.Services.AddSingleton<ICategoryRepository>(_ => new JsonCategoryRepository(dataDirectory));
 builder.Services.AddSingleton<TransactionService>();
+builder.Services.AddSingleton<CategoryService>();
 builder.Services.AddSingleton(_ => new LoggerService(builder.Configuration["Storage:LogDirectory"] ?? "logs"));
 builder.Services
     .AddControllers(options => options.ModelMetadataDetailsProviders.Add(new SystemTextJsonValidationMetadataProvider()))
