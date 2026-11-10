@@ -1,12 +1,13 @@
-using System.Text.Json;
 using System.Globalization;
+using System.Text.Json;
 using System.Text.Json.Serialization;
-using CashStack.Models;
 using CashStack.Exceptions;
+using CashStack.Models;
 
-namespace CashStack.Services;
+namespace CashStack.Repositories;
 
-public class StorageService
+// Stores transactions in one JSON file per day: data/yyyy-MM-dd.json
+public class JsonTransactionRepository : ITransactionRepository
 {
     private const string DateFormat = "yyyy-MM-dd";
 
@@ -18,7 +19,7 @@ public class StorageService
     };
     private readonly string _dataDirectory;
 
-    public StorageService(string dataDirectory)
+    public JsonTransactionRepository(string dataDirectory)
     {
         try
         {
@@ -31,44 +32,52 @@ public class StorageService
         _dataDirectory = dataDirectory;
     }
 
-    // Main methods
-    public void Save(Transaction transaction)
+    // Interface methods
+    public async Task AddAsync(Transaction transaction, CancellationToken ct = default)
     {
         DateOnly day = DateOnly.FromDateTime(transaction.Timestamp.DateTime);
         string path = GetFilePath(day);
-        List<Transaction> transactions = ReadFile(path);
+        List<Transaction> transactions = await ReadFileAsync(path, ct);
         transactions.Add(transaction);
-        WriteFile(path, transactions);
+        await WriteFileAsync(path, transactions, ct);
     }
 
-    public List<Transaction> Load(DateOnly from, DateOnly to)
+    public async Task<Transaction?> GetByIdAsync(Guid id, CancellationToken ct = default)
     {
-        if (from > to)
+        foreach (string path in GetDayFiles())
         {
-            throw new ArgumentException("From-date is after to-date", nameof(from));
+            List<Transaction> transactions = await ReadFileAsync(path, ct);
+            Transaction? match = transactions.Find(t => t.Id == id);
+            if (match is not null)
+            {
+                return match;
+            }
         }
-        return GetJsonFiles()
-            .Where(path => IsInRange(path, from, to))
-            .SelectMany(ReadFile)
+        return null;
+    }
+
+    public async Task<IReadOnlyList<Transaction>> GetRangeAsync(
+        DateOnly from, DateOnly to, TransactionType? type = null, CancellationToken ct = default)
+    {
+        var result = new List<Transaction>();
+        foreach (string path in GetJsonFiles().Where(path => IsInRange(path, from, to)))
+        {
+            result.AddRange(await ReadFileAsync(path, ct));
+        }
+        return result
+            .Where(t => type is null || t.Type == type)
             .OrderBy(t => t.Timestamp)
             .ToList();
     }
 
-    public Transaction? GetById(Guid id)
+    public async Task<bool> RemoveAsync(Guid id, CancellationToken ct = default)
     {
-        return GetDayFiles()
-            .SelectMany(ReadFile)
-            .FirstOrDefault(t => t.Id == id);
-    }
-
-    public bool Remove(Guid id)
-    {
-        foreach (var path in GetDayFiles())
+        foreach (string path in GetDayFiles())
         {
-            List<Transaction> transactions = ReadFile(path);
+            List<Transaction> transactions = await ReadFileAsync(path, ct);
             if (transactions.RemoveAll(t => t.Id == id) > 0)
             {
-                WriteFile(path, transactions);
+                await WriteFileAsync(path, transactions, ct);
                 return true;
             }
         }
@@ -100,16 +109,15 @@ public class StorageService
     private string GetFilePath(DateOnly day)
     {
         string filename = day.ToString(DateFormat, CultureInfo.InvariantCulture);
-        string fullPath = Path.Combine(_dataDirectory, $"{filename}.json");
-        return fullPath;
+        return Path.Combine(_dataDirectory, $"{filename}.json");
     }
 
-    private static List<Transaction> ReadFile(string path)
+    private static async Task<List<Transaction>> ReadFileAsync(string path, CancellationToken ct)
     {
         if (!File.Exists(path)) return [];
         try
         {
-            string jsonIn = File.ReadAllText(path);
+            string jsonIn = await File.ReadAllTextAsync(path, ct);
             return JsonSerializer.Deserialize<List<Transaction>>(jsonIn, _options) ?? [];
         }
         catch (Exception ex) when (ex is JsonException or IOException or UnauthorizedAccessException or ArgumentException)
@@ -118,12 +126,12 @@ public class StorageService
         }
     }
 
-    private static void WriteFile(string path, List<Transaction> transactions)
+    private static async Task WriteFileAsync(string path, List<Transaction> transactions, CancellationToken ct)
     {
         try
         {
             string jsonPretty = JsonSerializer.Serialize(transactions, _options);
-            File.WriteAllText(path, jsonPretty);
+            await File.WriteAllTextAsync(path, jsonPretty, ct);
         }
         catch (Exception ex) when (ex is JsonException or IOException or UnauthorizedAccessException)
         {
@@ -142,5 +150,4 @@ public class StorageService
             throw new StorageException($"Could not read directory '{_dataDirectory}'", ex);
         }
     }
-
 }

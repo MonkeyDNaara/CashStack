@@ -19,27 +19,25 @@ public class TransactionsController : ControllerBase
 
     [HttpGet]
     [ValidateDateRange]
-    public ActionResult<List<TransactionResponse>> GetAll(
-        [FromQuery] DateRangeQuery range, [FromQuery] TransactionType? type)
+    public async Task<ActionResult<List<TransactionResponse>>> GetAll(
+        [FromQuery] DateRangeQuery range, [FromQuery] TransactionType? type, CancellationToken ct)
     {
-        var transactions = _service.GetTransactions(range.Start, range.End, type)
-            .Select(TransactionResponse.From)
-            .ToList();
-        return Ok(transactions);
+        IReadOnlyList<Transaction> transactions = await _service.GetTransactionsAsync(range.Start, range.End, type, ct);
+        return Ok(transactions.Select(TransactionResponse.From).ToList());
     }
 
     [HttpGet("summary")]
     [ValidateDateRange]
-    public ActionResult<SummaryResponse> GetSummary([FromQuery] DateRangeQuery range)
+    public async Task<ActionResult<SummaryResponse>> GetSummary([FromQuery] DateRangeQuery range, CancellationToken ct)
     {
-        TransactionSummary summary = _service.GetSummary(range.Start, range.End);
+        TransactionSummary summary = await _service.GetSummaryAsync(range.Start, range.End, ct);
         return Ok(SummaryResponse.Create(range.Start, range.End, summary));
     }
 
     [HttpGet("{id:guid}")]
-    public ActionResult<TransactionResponse> GetById(Guid id)
+    public async Task<ActionResult<TransactionResponse>> GetById(Guid id, CancellationToken ct)
     {
-        Transaction? transaction = _service.GetById(id);
+        Transaction? transaction = await _service.GetByIdAsync(id, ct);
         if (transaction is null)
         {
             return NotFound();
@@ -48,16 +46,16 @@ public class TransactionsController : ControllerBase
     }
 
     [HttpPost]
-    public ActionResult<TransactionResponse> Create(CreateTransactionRequest request)
+    public async Task<ActionResult<TransactionResponse>> Create(CreateTransactionRequest request, CancellationToken ct)
     {
-        Transaction transaction = _service.Add(request.Type!.Value, request.Description, request.Amount);
+        Transaction transaction = await _service.AddAsync(request.Type!.Value, request.Description, request.Amount, ct);
         var response = TransactionResponse.From(transaction);
         return CreatedAtAction(nameof(GetById), new { id = transaction.Id }, response);
     }
 
     [HttpDelete("{id:guid}")]
-    public IActionResult Delete(Guid id)
+    public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
     {
-        return _service.Remove(id) ? NoContent() : NotFound();
+        return await _service.RemoveAsync(id, ct) ? NoContent() : NotFound();
     }
 }
