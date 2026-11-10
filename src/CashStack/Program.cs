@@ -20,9 +20,10 @@ ITransactionRepository repository;
 ICategoryRepository categoryRepository;
 // One DbContext for the whole session: the console has a single user and no parallel requests
 CashStackDbContext? dbContext = null;
+StorageSettings settings;
 try
 {
-    StorageSettings settings = StorageSettings.FromConfiguration(configuration);
+    settings = StorageSettings.FromConfiguration(configuration);
     if (settings.Provider == StorageProvider.Sqlite)
     {
         DbContextOptions<CashStackDbContext> dbOptions = new DbContextOptionsBuilder<CashStackDbContext>()
@@ -53,6 +54,17 @@ catch (ConfigurationException ex)
     Environment.ExitCode = 1;
     return;
 }
+// One-time migration: dotnet run -- --import-json (copies data/*.json into the database and exits)
+if (args.Contains("--import-json"))
+{
+    Environment.ExitCode = await ImportJsonAsync();
+    if (dbContext is not null)
+    {
+        await dbContext.DisposeAsync();
+    }
+    return;
+}
+
 var transactions = new TransactionService(repository, categoryRepository);
 // The console only selects categories; managing them happens via the API / front end
 var categories = new CategoryService(categoryRepository, repository);
@@ -210,6 +222,35 @@ async Task ShowReportAsync()
             string sign = total.Type == TransactionType.Expense ? "-" : "+";
             Console.WriteLine($"  {total.Type,-7} | {total.Name,-20} | {sign + FormatAmount(total.Total),12}");
         }
+    }
+}
+
+async Task<int> ImportJsonAsync()
+{
+    if (settings.Provider != StorageProvider.Sqlite)
+    {
+        Console.Error.WriteLine("Error: --import-json needs Storage:Provider = Sqlite (the target database).");
+        return 1;
+    }
+
+    try
+    {
+        var importer = new ImportService(
+            new JsonTransactionRepository(settings.DataDirectory),
+            new JsonCategoryRepository(settings.DataDirectory),
+            repository,
+            categoryRepository);
+
+        Console.WriteLine($"Importing JSON files from '{settings.DataDirectory}' ...");
+        ImportResult result = await importer.ImportAsync();
+        Console.WriteLine($"Categories:   {result.CategoriesImported} imported, {result.CategoriesSkipped} already there");
+        Console.WriteLine($"Transactions: {result.TransactionsImported} imported, {result.TransactionsSkipped} already there");
+        return 0;
+    }
+    catch (StorageException ex)
+    {
+        Console.Error.WriteLine($"Error: {ex.Message} -> {ex.InnerException?.Message}");
+        return 1;
     }
 }
 
