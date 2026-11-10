@@ -1,25 +1,35 @@
 using CashStack.Api.ErrorHandling;
+using CashStack.Api.Extensions;
 using CashStack.Api.Middleware;
+using CashStack.Configuration;
 using CashStack.Data;
 using CashStack.Exceptions;
-using CashStack.Repositories;
 using CashStack.Services;
 using Microsoft.AspNetCore.Mvc.ModelBinding.Metadata;
-using Microsoft.EntityFrameworkCore;
 using System.Diagnostics;
 using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
 
-string dataDirectory = builder.Configuration["Storage:DataDirectory"] ?? "data";
-builder.Services.AddSingleton<ITransactionRepository>(_ => new JsonTransactionRepository(dataDirectory));
-builder.Services.AddSingleton<ICategoryRepository>(_ => new JsonCategoryRepository(dataDirectory));
-builder.Services.AddSingleton<TransactionService>();
-builder.Services.AddSingleton<CategoryService>();
-// Registered now for the startup migration; repositories use it from #81/#82 on
-builder.Services.AddDbContext<CashStackDbContext>(options =>
-    options.UseSqlite(builder.Configuration.GetConnectionString("CashStack") ?? "Data Source=data/cashstack.db"));
-builder.Services.AddSingleton(_ => new LoggerService(builder.Configuration["Storage:LogDirectory"] ?? "logs"));
+// The audit log is optional: created once here, a failure only disables it (warning after Build)
+LoggerService? auditLog = null;
+Exception? auditLogError = null;
+try
+{
+    auditLog = new LoggerService(builder.Configuration["Storage:LogDirectory"] ?? "logs");
+}
+catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+{
+    auditLogError = ex;
+}
+
+builder.Services.AddCashStackStorage(builder.Configuration, auditLog);
+// Detect captive dependencies (singleton → scoped) in every environment, not only in Development
+builder.Host.UseDefaultServiceProvider(options =>
+{
+    options.ValidateScopes = true;
+    options.ValidateOnBuild = true;
+});
 builder.Services
     .AddControllers(options => options.ModelMetadataDetailsProviders.Add(new SystemTextJsonValidationMetadataProvider()))
     .AddJsonOptions(options =>
@@ -43,31 +53,28 @@ builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 var app = builder.Build();
 
 // Storage is required: without it the API is useless → fail fast with a clear log entry
-TransactionService transactionService;
 try
 {
-    // DbContext is scoped: create a scope just for the migration
-    using (IServiceScope scope = app.Services.CreateScope())
+    using IServiceScope scope = app.Services.CreateScope();
+    StorageSettings settings = scope.ServiceProvider.GetRequiredService<StorageSettings>();
+    if (settings.Provider == StorageProvider.Sqlite)
     {
         await DatabaseInitializer.InitializeAsync(scope.ServiceProvider.GetRequiredService<CashStackDbContext>());
     }
-    transactionService = app.Services.GetRequiredService<TransactionService>();
+
+    // Resolving once creates the repositories (JSON: data folder) before the first request
+    scope.ServiceProvider.GetRequiredService<TransactionService>();
+    app.Logger.LogInformation("Storage provider: {Provider}", settings.Provider);
 }
-catch (StorageException ex)
+catch (Exception ex) when (ex is StorageException or ConfigurationException)
 {
     app.Logger.LogCritical(ex, "Storage could not be initialized. Shutting down.");
     return 1;
 }
 
-// The audit log is optional: warn and keep running without it
-try
+if (auditLogError is not null)
 {
-    var logger = app.Services.GetRequiredService<LoggerService>();
-    transactionService.TransactionAdded += logger.OnTransactionAdded;
-}
-catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
-{
-    app.Logger.LogWarning(ex, "Transaction log could not be initialized. Continuing without audit log.");
+    app.Logger.LogWarning(auditLogError, "Transaction log could not be initialized. Continuing without audit log.");
 }
 
 app.UseRequestTiming();
