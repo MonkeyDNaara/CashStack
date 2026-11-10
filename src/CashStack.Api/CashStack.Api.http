@@ -1,5 +1,8 @@
 @host = http://localhost:5198
 @base = {{host}}/api/v1/transactions
+# Fixed ids of seeded categories (DefaultCategories)
+@groceries = 6f0b8a52-1c3e-4c1a-9a51-000000000201
+@salary = 6f0b8a52-1c3e-4c1a-9a51-000000000101
 
 ### List: current month (default range)
 GET {{base}}
@@ -13,8 +16,12 @@ Accept: application/json
 GET {{base}}/summary
 Accept: application/json
 
-### Summary: date range
+### Summary: date range (incl. totals per category for a chart)
 GET {{base}}/summary?from=2026-10-01&to=2026-10-31
+Accept: application/json
+
+### List: filter by category (200)
+GET {{base}}?categoryId={{groceries}}
 Accept: application/json
 
 ### Create (201 + Location header)
@@ -24,7 +31,8 @@ Content-Type: application/json
 
 {
   "type": "Expense",
-  "description": "Groceries",
+  "categoryId": "{{groceries}}",
+  "description": "Weekly shopping",
   "amount": 42.50
 }
 
@@ -52,7 +60,40 @@ POST {{base}}
 Content-Type: application/json
 
 {
+  "categoryId": "{{groceries}}",
   "description": "No type",
+  "amount": 10
+}
+
+### Create: missing categoryId (400)
+POST {{base}}
+Content-Type: application/json
+
+{
+  "type": "Expense",
+  "description": "No category",
+  "amount": 10
+}
+
+### Create: category of the wrong type (400, Salary is an income category)
+POST {{base}}
+Content-Type: application/json
+
+{
+  "type": "Expense",
+  "categoryId": "{{salary}}",
+  "description": "Wrong type",
+  "amount": 10
+}
+
+### Create: unknown category (400)
+POST {{base}}
+Content-Type: application/json
+
+{
+  "type": "Expense",
+  "categoryId": "00000000-0000-0000-0000-000000000000",
+  "description": "Unknown category",
   "amount": 10
 }
 
@@ -62,6 +103,7 @@ Content-Type: application/json
 
 {
   "type": "Income",
+  "categoryId": "{{salary}}",
   "description": " ",
   "amount": 1.234
 }
@@ -167,4 +209,26 @@ DELETE {{categories}}/{{createCategory.response.body.$.id}}
 ### Categories: delete again (404)
 DELETE {{categories}}/{{createCategory.response.body.$.id}}
 
-# "Delete a category in use" (409) becomes reachable with #84, when transactions accept a categoryId
+### Categories: create one and use it in a transaction (201)
+# @name usedCategory
+POST {{categories}}
+Content-Type: application/json
+
+{
+  "name": "Insurance",
+  "type": "Expense"
+}
+
+### Transactions: create with the new category (201)
+POST {{base}}
+Content-Type: application/json
+
+{
+  "type": "Expense",
+  "categoryId": "{{usedCategory.response.body.$.id}}",
+  "description": "Liability insurance",
+  "amount": 60
+}
+
+### Categories: delete a category in use (409)
+DELETE {{categories}}/{{usedCategory.response.body.$.id}}
