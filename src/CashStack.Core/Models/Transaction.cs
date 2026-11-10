@@ -21,6 +21,12 @@ public class Transaction
             throw new ArgumentOutOfRangeException(nameof(amount), "Amount must be greater than 0.");
         }
 
+        // Money has cents only; the database stores the amount as whole cents
+        if (decimal.Round(amount, 2) != amount)
+        {
+            throw new ArgumentException("Amount must not have more than 2 decimal places.", nameof(amount));
+        }
+
         Id = id;
         Timestamp = timestamp;
         Type = type;
