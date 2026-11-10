@@ -436,6 +436,8 @@ Temporary Items
 
 # Doc files
 data/
+# Source folder, not runtime data (macOS is case-insensitive: data/ would match Data/)
+!src/CashStack.Core/Data/
 logs/
 docs/planning/create_issues.py
 docs/project_instructions_files/
