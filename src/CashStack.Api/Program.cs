@@ -38,6 +38,7 @@ builder.Services
         options.AllowInputFormatterExceptionMessages = false;
     });
 builder.Services.AddRequestTiming();
+builder.Services.AddFrontendCors(builder.Configuration);
 builder.Services.AddProblemDetails(options =>
 {
     // Applies to every ProblemDetails response (exceptions, validation, status codes)
@@ -78,6 +79,9 @@ if (auditLogError is not null)
 }
 
 app.UseRequestTiming();
+// CORS headers are added when the response starts, so error responses (400/404/409/500)
+// are readable by the front end too (see CorsApiTests)
+app.UseFrontendCors();
 app.UseExceptionHandler();
 app.UseStatusCodePages();
 
