@@ -1,9 +1,11 @@
 using CashStack.Api.ErrorHandling;
 using CashStack.Api.Middleware;
+using CashStack.Data;
 using CashStack.Exceptions;
 using CashStack.Repositories;
 using CashStack.Services;
 using Microsoft.AspNetCore.Mvc.ModelBinding.Metadata;
+using Microsoft.EntityFrameworkCore;
 using System.Diagnostics;
 using System.Text.Json.Serialization;
 
@@ -14,6 +16,9 @@ builder.Services.AddSingleton<ITransactionRepository>(_ => new JsonTransactionRe
 builder.Services.AddSingleton<ICategoryRepository>(_ => new JsonCategoryRepository(dataDirectory));
 builder.Services.AddSingleton<TransactionService>();
 builder.Services.AddSingleton<CategoryService>();
+// Registered now for the startup migration; repositories use it from #81/#82 on
+builder.Services.AddDbContext<CashStackDbContext>(options =>
+    options.UseSqlite(builder.Configuration.GetConnectionString("CashStack") ?? "Data Source=data/cashstack.db"));
 builder.Services.AddSingleton(_ => new LoggerService(builder.Configuration["Storage:LogDirectory"] ?? "logs"));
 builder.Services
     .AddControllers(options => options.ModelMetadataDetailsProviders.Add(new SystemTextJsonValidationMetadataProvider()))
@@ -41,6 +46,11 @@ var app = builder.Build();
 TransactionService transactionService;
 try
 {
+    // DbContext is scoped: create a scope just for the migration
+    using (IServiceScope scope = app.Services.CreateScope())
+    {
+        await DatabaseInitializer.InitializeAsync(scope.ServiceProvider.GetRequiredService<CashStackDbContext>());
+    }
     transactionService = app.Services.GetRequiredService<TransactionService>();
 }
 catch (StorageException ex)
