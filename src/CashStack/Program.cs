@@ -3,13 +3,25 @@ using CashStack.Services;
 using CashStack.Models;
 using CashStack.Exceptions;
 using CashStack.Repositories;
+using CashStack.Data;
+using Microsoft.EntityFrameworkCore;
 
 const string DateFormat = "yyyy-MM-dd";
+// Moves to configuration with the provider switch (#82)
+const string ConnectionString = "Data Source=data/cashstack.db";
 
 ITransactionRepository repository;
 ICategoryRepository categoryRepository;
 try
 {
+    DbContextOptions<CashStackDbContext> dbOptions = new DbContextOptionsBuilder<CashStackDbContext>()
+        .UseSqlite(ConnectionString)
+        .Options;
+    await using (var dbContext = new CashStackDbContext(dbOptions))
+    {
+        await DatabaseInitializer.InitializeAsync(dbContext);
+    }
+
     repository = new JsonTransactionRepository("data");
     categoryRepository = new JsonCategoryRepository("data");
 }

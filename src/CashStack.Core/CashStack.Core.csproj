@@ -4,6 +4,8 @@
     <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <!-- Namespaces are CashStack.* (not CashStack.Core.*), also for generated migrations -->
+    <RootNamespace>CashStack</RootNamespace>
   </PropertyGroup>
 
   <ItemGroup>
