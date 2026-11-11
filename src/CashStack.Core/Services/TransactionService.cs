@@ -9,24 +9,30 @@ public class TransactionService
 {
     private readonly ITransactionRepository _repository;
     private readonly ICategoryRepository _categories;
+    private readonly TimeProvider _time;
     public event EventHandler<TransactionAddedEventArgs>? TransactionAdded;
 
-    // Depends on the interface only: the caller decides which storage is used
-    public TransactionService(ITransactionRepository repository, ICategoryRepository categories)
+    // Depends on the interface only: the caller decides which storage is used.
+    // TimeProvider instead of DateTimeOffset.Now, so tests can fix "now" and the time zone.
+    public TransactionService(
+        ITransactionRepository repository, ICategoryRepository categories, TimeProvider? timeProvider = null)
     {
         _repository = repository;
         _categories = categories;
+        _time = timeProvider ?? TimeProvider.System;
     }
 
     public async Task<Transaction> AddAsync(
-        TransactionType type, string description, decimal amount, Guid? categoryId = null, CancellationToken ct = default)
+        TransactionType type, string description, decimal amount, Guid? categoryId = null, DateOnly? date = null,
+        CancellationToken ct = default)
     {
+        DateTimeOffset timestamp = CreateTimestamp(date);
         // No category chosen → "Other" of the type, so callers without category selection keep working
         Category category = await GetMatchingCategoryAsync(categoryId ?? DefaultCategories.GetOtherId(type), type, ct);
 
         var transaction = new Transaction(
             Guid.NewGuid(),
-            DateTimeOffset.Now,
+            timestamp,
             type,
             category.Id,
             description,
@@ -88,6 +94,28 @@ public class TransactionService
         }
 
         return category;
+    }
+
+    // Business rule: transactions can be booked for today or a past day, never for the future.
+    // A past day gets the current time of day, so several entries of one day keep their order.
+    private DateTimeOffset CreateTimestamp(DateOnly? date)
+    {
+        DateTimeOffset now = _time.GetLocalNow();
+        DateOnly today = DateOnly.FromDateTime(now.DateTime);
+
+        if (date is null || date == today)
+        {
+            return now;
+        }
+
+        if (date > today)
+        {
+            throw new BusinessRuleException($"The date {date:yyyy-MM-dd} must not be in the future.");
+        }
+
+        DateTime local = date.Value.ToDateTime(TimeOnly.FromDateTime(now.DateTime));
+        // Offset of that day, not of today: a day in summer is +02:00, a day in winter +01:00
+        return new DateTimeOffset(local, _time.LocalTimeZone.GetUtcOffset(local));
     }
 
     // Business rule, checked once here instead of in every repository implementation

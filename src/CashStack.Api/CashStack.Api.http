@@ -36,6 +36,30 @@ Content-Type: application/json
   "amount": 42.50
 }
 
+### Create with a past date (201, timestamp = that day at the current time)
+POST {{base}}
+Content-Type: application/json
+
+{
+  "type": "Expense",
+  "categoryId": "{{groceries}}",
+  "description": "September shopping",
+  "amount": 30,
+  "date": "2026-09-15"
+}
+
+### Create with a future date (400, field error for "date")
+POST {{base}}
+Content-Type: application/json
+
+{
+  "type": "Expense",
+  "categoryId": "{{groceries}}",
+  "description": "Future",
+  "amount": 10,
+  "date": "2099-01-01"
+}
+
 ### Get by id (uses the id returned by "create")
 GET {{base}}/{{create.response.body.$.id}}
 Accept: application/json

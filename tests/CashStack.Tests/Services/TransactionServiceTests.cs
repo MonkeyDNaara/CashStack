@@ -14,9 +14,54 @@ public class TransactionServiceTests
     private readonly FakeCategoryRepository _categories = new();
     private readonly TransactionService _service;
 
+    // "Now" for all tests: Wednesday, 2026-11-11 14:30 in Berlin (winter time, +01:00)
+    private static readonly DateTimeOffset Now = TestData.At(11, 11, 14, 30);
+
     public TransactionServiceTests()
     {
-        _service = new TransactionService(_transactions, _categories);
+        _service = new TransactionService(_transactions, _categories, new FakeTimeProvider(Now));
+    }
+
+    [Fact]
+    public async Task AddAsync_WithoutDate_UsesNow()
+    {
+        Transaction added = await _service.AddAsync(TransactionType.Expense, "Coffee", 3.50m, TestData.Groceries);
+
+        Assert.Equal(Now, added.Timestamp);
+    }
+
+    [Fact]
+    public async Task AddAsync_Today_UsesNow()
+    {
+        Transaction added = await _service.AddAsync(
+            TransactionType.Expense, "Coffee", 3.50m, TestData.Groceries, new DateOnly(2026, 11, 11));
+
+        Assert.Equal(Now, added.Timestamp);
+    }
+
+    [Fact]
+    public async Task AddAsync_PastDate_KeepsTimeOfDayWithTheOffsetOfThatDay()
+    {
+        Transaction added = await _service.AddAsync(
+            TransactionType.Expense, "Groceries", 20m, TestData.Groceries, new DateOnly(2026, 8, 15));
+
+        // August is summer time in Berlin: +02:00, although "now" is +01:00
+        Assert.Equal(TestData.At(8, 15, 14, 30, TestData.Summer), added.Timestamp);
+        Assert.Equal(TestData.Summer, added.Timestamp.Offset);
+    }
+
+    [Fact]
+    public async Task AddAsync_FutureDate_ThrowsAndSavesNothing()
+    {
+        int raised = 0;
+        _service.TransactionAdded += (_, _) => raised++;
+
+        var error = await Assert.ThrowsAsync<BusinessRuleException>(() =>
+            _service.AddAsync(TransactionType.Expense, "x", 1m, TestData.Groceries, new DateOnly(2026, 11, 12)));
+
+        Assert.Contains("2026-11-12", error.Message);
+        Assert.Empty(_transactions.Items);
+        Assert.Equal(0, raised);
     }
 
     [Fact]

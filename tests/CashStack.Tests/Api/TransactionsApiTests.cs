@@ -2,6 +2,7 @@ using System.Net;
 using CashStack.Api.Dtos;
 using CashStack.Models;
 using CashStack.Tests.Support;
+using Microsoft.AspNetCore.Mvc;
 using Xunit;
 
 namespace CashStack.Tests.Api;
@@ -38,6 +39,48 @@ public class TransactionsApiTests : ApiTestBase
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         Assert.Contains("Salary", (await ReadProblemAsync(response)).Detail);
+    }
+
+    [Fact]
+    public async Task Post_PastDate_IsListedOnThatDay()
+    {
+        HttpResponseMessage response = await PostAsync(Url, new
+        {
+            type = "Expense", categoryId = TestData.Groceries, description = "September shopping", amount = 30m,
+            date = "2026-09-15"
+        });
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        TransactionResponse created = await ReadAsync<TransactionResponse>(response);
+        Assert.Equal(new DateOnly(2026, 9, 15), DateOnly.FromDateTime(created.Timestamp.DateTime));
+
+        List<TransactionResponse> september = await ReadAsync<List<TransactionResponse>>(
+            await Client.GetAsync($"{Url}?from=2026-09-15&to=2026-09-15"));
+        Assert.Equal(created.Id, Assert.Single(september).Id);
+    }
+
+    [Fact]
+    public async Task Post_FutureDate_Returns400WithFieldErrorForDate()
+    {
+        HttpResponseMessage response = await PostAsync(Url, new
+        {
+            type = "Expense", categoryId = TestData.Groceries, description = "x", amount = 1m, date = "2099-01-01"
+        });
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        ValidationProblemDetails problem = await ReadAsync<ValidationProblemDetails>(response);
+        Assert.Contains("future", Assert.Single(problem.Errors["date"]));
+    }
+
+    [Fact]
+    public async Task Post_InvalidDateFormat_Returns400()
+    {
+        HttpResponseMessage response = await PostAsync(Url, new
+        {
+            type = "Expense", categoryId = TestData.Groceries, description = "x", amount = 1m, date = "15.09.2026"
+        });
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
     [Fact]
