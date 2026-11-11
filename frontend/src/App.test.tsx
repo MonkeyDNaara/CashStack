@@ -4,12 +4,12 @@ import { describe, expect, it } from 'vitest';
 import { renderRoute } from './test/renderRoute';
 
 describe('app layout and routing', () => {
-  it('shows the navigation with the dashboard as start page', () => {
+  it('shows the navigation with the dashboard as start page', async () => {
     renderRoute('/');
 
-    const nav = screen.getByRole('navigation', { name: 'Main' });
+    const nav = await screen.findByRole('navigation', { name: 'Main' });
     expect(nav).toBeInTheDocument();
-    expect(screen.getByRole('heading', { level: 1, name: 'Dashboard' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { level: 1, name: 'Dashboard' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Dashboard' })).toHaveClass('menu-active');
   });
 
@@ -17,7 +17,7 @@ describe('app layout and routing', () => {
     const user = userEvent.setup();
     const { router } = renderRoute('/');
 
-    await user.click(screen.getByRole('link', { name: 'Transactions' }));
+    await user.click(await screen.findByRole('link', { name: 'Transactions' }));
     expect(screen.getByRole('heading', { level: 1, name: 'Transactions' })).toBeInTheDocument();
     expect(router.state.location.pathname).toBe('/transactions');
 

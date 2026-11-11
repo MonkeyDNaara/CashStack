@@ -1,8 +1,8 @@
 import type { RouteObject } from 'react-router';
 import { AppLayout } from './components/layout/AppLayout';
 import { CategoriesPage } from './pages/CategoriesPage';
-import { DashboardPage } from './pages/DashboardPage';
 import { NotFoundPage } from './pages/NotFoundPage';
+import { PageLoading } from './pages/PageLoading';
 import { RouteErrorPage } from './pages/RouteErrorPage';
 import { TransactionsPage } from './pages/TransactionsPage';
 
@@ -13,7 +13,12 @@ export const routes: RouteObject[] = [
     element: <AppLayout />,
     errorElement: <RouteErrorPage />,
     children: [
-      { index: true, element: <DashboardPage /> },
+      {
+        index: true,
+        // Code splitting: Recharts (~400 kB) is only loaded when the dashboard is opened
+        lazy: () => import('./pages/DashboardPage').then((m) => ({ Component: m.DashboardPage })),
+        HydrateFallback: PageLoading,
+      },
       { path: 'transactions', element: <TransactionsPage /> },
       { path: 'categories', element: <CategoriesPage /> },
       { path: '*', element: <NotFoundPage /> },

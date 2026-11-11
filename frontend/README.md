@@ -41,7 +41,7 @@ API's CORS policy allows exactly that origin (`Cors:AllowedOrigins`).
 
 ## Stack
 
-React 19 · TypeScript (strict) · Vite · React Router · TanStack Query · Tailwind CSS v4 +
+React 19 · TypeScript (strict) · Vite · React Router · TanStack Query · Recharts · Tailwind CSS v4 +
 DaisyUI 5 · Vitest + React Testing Library + MSW
 
 ```
@@ -50,9 +50,11 @@ src/
 ├── queries/             # TanStack Query hooks + query key factory (invalidation after mutations)
 ├── components/
 │   ├── layout/          # AppLayout (navbar), PageHeader
+│   ├── dashboard/       # stat cards, donut + category list, recent transactions, date range picker
 │   └── feedback/        # Toaster, ErrorAlert
-├── pages/               # one component per route
-├── lib/                 # QueryClient factory, toast store, format helpers (EUR de-DE, dates)
+├── pages/               # one component per route (dashboard is lazy-loaded: Recharts only loads there)
+├── hooks/               # useDateRangeParams (range in the URL), useCategoryColors
+├── lib/                 # QueryClient, toast store, format helpers, date range presets, category colors
 ├── test/                # test setup, MSW server + fixtures, render helpers
 ├── routes.tsx           # route table, shared by the app and the tests
 ├── config.ts            # API base URL from VITE_API_URL
