@@ -50,10 +50,12 @@ src/
 ├── queries/             # TanStack Query hooks + query key factory (invalidation after mutations)
 ├── components/
 │   ├── layout/          # AppLayout (navbar), PageHeader
-│   ├── dashboard/       # stat cards, donut + category list, recent transactions, date range picker
+│   ├── common/          # Modal (<dialog>), DateRangePicker, CategoryChip
+│   ├── dashboard/       # stat cards, donut + category list, recent transactions
+│   ├── transactions/    # filters, list grouped by day, delete dialog
 │   └── feedback/        # Toaster, ErrorAlert
 ├── pages/               # one component per route (dashboard is lazy-loaded: Recharts only loads there)
-├── hooks/               # useDateRangeParams (range in the URL), useCategoryColors
+├── hooks/               # URL state (useDateRangeParams, useTransactionFilterParams), useCategoryColors
 ├── lib/                 # QueryClient, toast store, format helpers, date range presets, category colors
 ├── test/                # test setup, MSW server + fixtures, render helpers
 ├── routes.tsx           # route table, shared by the app and the tests

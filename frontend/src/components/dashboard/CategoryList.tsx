@@ -1,7 +1,7 @@
 import type { CategoryTotal } from '../../api/types';
 import { useCategoryColors } from '../../hooks/useCategoryColors';
 import { formatMoney, formatPercent } from '../../lib/format';
-import { CategoryChip } from './CategoryChip';
+import { CategoryChip } from '../common/CategoryChip';
 
 type CategoryListProps = {
   totals: CategoryTotal[];

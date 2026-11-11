@@ -3,7 +3,7 @@ import type { Transaction } from '../../api/types';
 import type { Range } from '../../lib/dateRanges';
 import { useCategoryColors } from '../../hooks/useCategoryColors';
 import { formatDate, formatSignedMoney } from '../../lib/format';
-import { CategoryChip } from './CategoryChip';
+import { CategoryChip } from '../common/CategoryChip';
 
 const LIMIT = 5;
 

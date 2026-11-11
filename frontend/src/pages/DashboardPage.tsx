@@ -1,5 +1,5 @@
 import { isApiError } from '../api/ApiError';
-import { DateRangePicker } from '../components/dashboard/DateRangePicker';
+import { DateRangePicker } from '../components/common/DateRangePicker';
 import { ExpensesByCategory } from '../components/dashboard/ExpensesByCategory';
 import { IncomeByCategory } from '../components/dashboard/IncomeByCategory';
 import { RecentTransactions } from '../components/dashboard/RecentTransactions';
