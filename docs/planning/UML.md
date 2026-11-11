@@ -276,3 +276,57 @@ sequenceDiagram
         C-->>Client: 204
     end
 ```
+
+## Front end: components and data flow
+
+```mermaid
+flowchart LR
+    subgraph Pages["pages/ (routes)"]
+        Dashboard["DashboardPage<br/>(lazy, Recharts)"]
+        Transactions["TransactionsPage"]
+        Categories["CategoriesPage"]
+    end
+    subgraph Hooks["hooks/ + queries/"]
+        Url["useDateRangeParams<br/>useTransactionFilterParams<br/>(state in the URL)"]
+        Query["useSummary · useTransactions · useCategories<br/>useCreate… · useRename… · useDelete…"]
+    end
+    subgraph Api["api/"]
+        Client["apiClient (fetch)"] --> Error["ApiError<br/>from ProblemDetails"]
+    end
+    Pages --> Url
+    Pages --> Query
+    Query -- "cache, invalidate after changes" --> Client
+    Client -- "HTTP / JSON" --> Rest["CashStack.Api<br/>/api/v1"]
+    Error -. "field errors · alert · toast" .-> Pages
+```
+
+## Sequence: create a transaction in the front end
+
+```mermaid
+sequenceDiagram
+    actor User
+    participant Dialog as CreateTransactionDialog
+    participant Query as useCreateTransaction
+    participant Api as CashStack.Api
+    participant Cache as QueryClient cache
+
+    User->>Dialog: amount, category, description, date → Save
+    Dialog->>Dialog: validateTransactionForm (same rules as the API)
+    alt invalid
+        Dialog-->>User: errors at the fields, no request
+    else valid
+        Dialog->>Query: mutate(request)
+        Query->>Api: POST /api/v1/transactions
+        alt 201 Created
+            Api-->>Query: TransactionResponse
+            Query->>Cache: invalidate ["transactions"] (lists + summaries)
+            Cache->>Api: refetch visible lists and summary
+            Dialog-->>User: close + toast "Transaction added"
+        else 400 ProblemDetails
+            Api-->>Query: errors / detail
+            Dialog-->>User: field errors or alert in the dialog
+        else network error / 5xx
+            Query-->>User: toast (above the dialog)
+        end
+    end
+```
