@@ -41,7 +41,7 @@ export function Modal({ open, onClose, title, children, actions }: ModalProps) {
       </div>
       {/* Click on the backdrop closes the dialog */}
       <form method="dialog" className="modal-backdrop">
-        <button type="submit" aria-label="Close">
+        <button type="submit" aria-label="Close dialog" tabIndex={-1}>
           close
         </button>
       </form>

@@ -1,6 +1,7 @@
 import type { Transaction } from '../../api/types';
 import { formatSignedMoney } from '../../lib/format';
 import { CategoryChip } from '../common/CategoryChip';
+import { TrashIcon } from '../common/icons';
 
 type TransactionRowProps = {
   transaction: Transaction;
@@ -36,20 +37,5 @@ export function TransactionRow({ transaction: t, color, meta, onDelete }: Transa
         </button>
       )}
     </div>
-  );
-}
-
-function TrashIcon() {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      className="h-4 w-4"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      aria-hidden="true"
-    >
-      <path d="M3 6h18M8 6V4h8v2m-9 0 1 14h8l1-14" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
   );
 }
