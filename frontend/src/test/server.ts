@@ -10,7 +10,11 @@ export const api = (path: string) => `${API_BASE}${path}`;
 export const handlers = [
   http.get(api('/transactions'), () => HttpResponse.json(transactions)),
   http.get(api('/transactions/summary'), () => HttpResponse.json(summary)),
-  http.get(api('/categories'), () => HttpResponse.json(categories)),
+  // Filters by ?type like the real API
+  http.get(api('/categories'), ({ request }) => {
+    const type = new URL(request.url).searchParams.get('type');
+    return HttpResponse.json(type ? categories.filter((c) => c.type === type) : categories);
+  }),
 ];
 
 export const server = setupServer(...handlers);
