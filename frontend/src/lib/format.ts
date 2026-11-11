@@ -1,4 +1,4 @@
-import type { IsoDate } from '../api/types';
+import type { IsoDate, TransactionType } from '../api/types';
 
 // de-DE: "1.234,50 €" (decision for the UI: English texts, German number format)
 const money = new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' });
@@ -31,4 +31,14 @@ export function formatDateTime(timestamp: string): string {
 export function currentMonthRange(today: Date = new Date()): { from: IsoDate; to: IsoDate } {
   const first = new Date(today.getFullYear(), today.getMonth(), 1);
   return { from: toIsoDate(first), to: toIsoDate(today) };
+}
+
+/** "+2.500,00 €" for income, "−42,50 €" (real minus sign) for expenses */
+export function formatSignedMoney(amount: number, type: TransactionType): string {
+  return `${type === 'Income' ? '+' : '−'}${formatMoney(Math.abs(amount))}`;
+}
+
+/** Share of a total as whole percent, 0 when the total is 0 */
+export function formatPercent(value: number, total: number): string {
+  return `${total > 0 ? Math.round((value / total) * 100) : 0} %`;
 }
