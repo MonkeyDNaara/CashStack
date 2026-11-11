@@ -26,6 +26,24 @@ The API URL comes from `VITE_API_URL` (default `http://localhost:5198`). To chan
 copy `.env.example` to `.env.local`. The dev server always uses port 5173, because the
 API's CORS policy allows exactly that origin (`Cors:AllowedOrigins`).
 
+## Demo data
+
+With the API running, fill an empty database with demo data for the last three months
+(salary, rent, groceries, subscriptions, leisure, …):
+
+```bash
+npm run seed                          # API from VITE_API_URL or http://localhost:5198
+npm run seed -- --force               # add the data although transactions exist
+npm run seed -- --api=http://host:port
+```
+
+The script (`scripts/seed.ts`, run with `tsx`) only uses the public API, so every booking
+goes through the API's validation and the audit log. The plan is fixed and relative to
+today (same amounts on every run, nothing in the future): about 45 transactions when run
+at the end of a month, fewer earlier in the month. It refuses to run twice unless
+`--force` is given, and creates the category "Subscriptions" if it is missing.
+To start over, stop the API and delete `src/CashStack.Api/data/`.
+
 ## Scripts
 
 | Script                            | What it does                                                          |
