@@ -1,15 +1,34 @@
 # CashStack
 
-A budget tracker in **C# / .NET 10**: record income and expenses, organise them in
-categories and get reports with totals per category for any date range. It comes as a
-**console app** and a **REST API** on top of one shared core library, with **SQLite via
-Entity Framework Core** (or JSON files) as storage and **89 automated tests**.
+A budget tracker in **C# / .NET 10** with a **React + TypeScript** front end: record income
+and expenses, organise them in categories and see where the money goes for any date range.
+A **REST API** and a **console app** share one core library, with **SQLite via Entity
+Framework Core** (or JSON files) as storage. **196 automated tests** (89 xUnit, 107 Vitest).
 
 My first C# project, built during the WBS Coding School "Software Engineering & AI"
 program (requirements FR001–FR016 plus the course topics REST API, middleware, filters,
-error handling and EF Core).
+error handling and EF Core, and a React front end on top).
+
+![CashStack dashboard: income, expenses and balance, expenses per category as donut and list, recent transactions](docs/images/dashboard.png)
+
+## Tech stack
+
+| Part | Technologies |
+|---|---|
+| Back end | C# 14 / .NET 10, ASP.NET Core Web API (controllers, middleware, filters, ProblemDetails), Entity Framework Core 10 + SQLite |
+| Front end | React 19, TypeScript, Vite, React Router, TanStack Query, Recharts, Tailwind CSS v4 + DaisyUI 5 |
+| Tests | xUnit, `WebApplicationFactory`, SQLite in-memory · Vitest, React Testing Library, MSW |
+| Tooling | ESLint, Prettier, GitHub Projects (one issue, branch and PR per change) |
 
 ## Features
+
+**Front end** (`frontend/`)
+- Dashboard: income, expenses and balance, expenses per category as donut + list, income per category, latest transactions; date presets (this month, last month, last 3 months, this year) or any range, kept in the URL
+- Transactions grouped by day with filters (range, type, category, text search) and delete with confirmation
+- "New transaction" dialog: amount in German or English notation, category tiles, booking date; validation in the browser with the API's rules
+- Categories: create, rename inline, delete; protected "Other"; the API's messages (e.g. 409 "in use") shown where they belong
+- API errors (`ProblemDetails`) shown at the field, in the dialog or as toast; loading and empty states everywhere
+- `npm run seed` creates three months of demo data through the API
 
 **Console**
 - Add income or expenses: choose a category from a numbered list, enter description and amount (`42,50` or `42.50`)
@@ -28,9 +47,18 @@ error handling and EF Core).
 - Every added transaction is written to an audit log via a C# event
 - One-time, idempotent import of existing JSON data into SQLite
 
+## Screenshots
+
+| Transactions | New transaction |
+|---|---|
+| ![Transaction list grouped by day with filters](docs/images/transactions.png) | ![Dialog to add a transaction with amount, category tiles, description and date](docs/images/new-transaction.png) |
+| **Categories** | |
+| ![Income and expense categories with rename, delete and the protected Other category](docs/images/categories.png) | |
+
 ## Getting started
 
-Requires the [.NET 10 SDK](https://dotnet.microsoft.com/download).
+Requires the [.NET 10 SDK](https://dotnet.microsoft.com/download) and, for the front end,
+[Node.js 22+](https://nodejs.org).
 
 ```bash
 git clone https://github.com/MonkeyDNaara/CashStack.git
@@ -38,7 +66,18 @@ cd CashStack
 dotnet test
 ```
 
-**API** (http://localhost:5198, run from the project folder):
+**API + front end** (http://localhost:5198 and http://localhost:5173), one terminal:
+
+```bash
+cd frontend
+npm install
+npm run dev:all
+npm run seed      # optional, in a second terminal: three months of demo data
+```
+
+Details, scripts and the front-end structure: [frontend/README.md](frontend/README.md).
+
+**API only** (http://localhost:5198, run from the project folder):
 
 ```bash
 cd src/CashStack.Api
@@ -229,6 +268,7 @@ logs/
 
 ```mermaid
 flowchart LR
+    Web["frontend<br/>(React + TypeScript)"] -- "HTTP / JSON<br/>CORS" --> Api
     Console["CashStack<br/>(console)"] --> Services
     Api["CashStack.Api<br/>(controllers, middleware)"] --> Services
     subgraph Core["CashStack.Core"]
@@ -256,9 +296,15 @@ src/
     ├── Controllers/  Dtos/  Extensions/  Middleware/  Filters/  Validation/  ErrorHandling/
 tests/
 └── CashStack.Tests/          # xUnit
+frontend/                     # React + Vite + TypeScript (see frontend/README.md)
+├── src/api/                  # typed fetch client, ApiError from ProblemDetails
+├── src/queries/              # TanStack Query hooks, cache invalidation after changes
+├── src/components/  pages/   # dashboard, transactions, categories, shared UI
+└── scripts/seed.ts           # demo data through the API
 ```
 
 **Design decisions**
+- **Front end talks only to the REST API:** typed client in one place, server state in TanStack Query (cache, loading/error states, refresh after create/rename/delete), filters in the URL so every view can be bookmarked.
 - **Dependency inversion:** services only know the repository interfaces; the storage is chosen in the composition root (`Program.cs` / `AddCashStackStorage`).
 - **Rich domain model:** `Transaction` and `Category` validate themselves in their constructors; `Transaction` is immutable, a category can only be renamed.
 - **Business rules in services, not controllers:** controllers stay thin; domain exceptions are mapped to HTTP status codes in one place (`GlobalExceptionHandler`).
@@ -272,10 +318,11 @@ Plan and requirements: [docs/planning/PLANNING.md](docs/planning/PLANNING.md)
 ## Tests
 
 ```bash
-dotnet test
+dotnet test                      # back end
+cd frontend && npm run check     # front end: lint, format, tests, build
 ```
 
-89 tests (xUnit), no files left on disk:
+89 back-end tests (xUnit), no files left on disk:
 
 | Area | How |
 |---|---|
@@ -284,6 +331,15 @@ dotnet test
 | Repositories | **contract tests**: one abstract test class per interface, run against JSON (temp folder per test) and EF Core (SQLite in-memory with the real migration) |
 | API | `WebApplicationFactory` in memory: status codes, error format, CORS, audit log |
 
+107 front-end tests (Vitest + React Testing Library), the API mocked with MSW (an
+unhandled request fails the test):
+
+| Area | How |
+|---|---|
+| Helpers | amount parsing (`42,50`, `1.234,56`), date presets across month/year boundaries, grouping by day, demo data plan |
+| API client | `ApiError` from `ProblemDetails`: 400 field errors, 404, 409, 500, non-JSON, network error |
+| Pages | real routes in a memory router: filters sent to the API and kept in the URL, create/rename/delete flows, field errors, empty and error states |
+
 ## Status
 
 | Epic | Status |
@@ -291,7 +347,7 @@ dotnet test
 | MVP console app (FR001–FR016): models, storage, events, logging, UI, error handling | ✅ |
 | REST API: Core library, hosting, controllers, middleware, validation, filters, error handling, CORS | ✅ |
 | Persistence with EF Core: SQLite, categories, provider switch, import, tests | ✅ |
-| Front end (React + Vite + TypeScript) | 🚧 next |
+| Front end: React + TypeScript, dashboard, transactions, create dialog, categories, demo data | ✅ |
 
 ## Workflow
 
