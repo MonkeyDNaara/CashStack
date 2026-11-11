@@ -226,3 +226,46 @@ tests/CashStack.Tests/
 Stretch additions (Epic 9): API integration tests with `WebApplicationFactory`, OpenAPI documentation with a UI (Scalar).
 
 **Concept map:** Hosting = builder phase (services) + app phase (pipeline); Endpoint Routing = match, then execute; Middleware = ordered chain around the endpoint; Filters = MVC pipeline around the action; Validation = DataAnnotations + filter; Error Handling = `IExceptionHandler` + ProblemDetails.
+
+## 7. Epic #102 – Front end (React + Vite + TypeScript)
+
+Added 2026-11-10, finished 2026-11-11. Goal: a small, clean web front end for the existing REST API that can be demoed locally to employers (no deploy).
+
+**Decisions**
+
+| Topic | Decision | Why |
+|---|---|---|
+| Folder and tooling | `frontend/` next to `src/` and `tests/`; ESLint + Prettier + Vitest + React Testing Library + MSW; exact dependency versions | same quality bar as the back end (tests for every feature) |
+| Libraries | React Router (data router), TanStack Query, Recharts, own typed `fetch` client | server state with caching and invalidation instead of hand-written `useEffect` fetching |
+| Styling | Tailwind CSS v4 + DaisyUI 5, theme `corporate` with the brand teal | consistent, modern look with little custom CSS |
+| Errors | `ProblemDetails` → `ApiError`; field errors at the field, `detail` (400/409) in the form or dialog, network/5xx as toast, failed page loads as alert with retry | the API's messages reach the user where they can act on them |
+| Start | `npm run dev:all` (API + Vite with `concurrently`), `VITE_API_URL`; CORS for `http://localhost:5173` from Epic 10 | one command for a demo |
+| Language and formats | English UI, EUR in `de-DE` (`1.234,50 €`), dates `yyyy-MM-dd` | matches the API and the console |
+| Dashboard | summary cards, expenses as donut + list (hover highlights both), income list, latest 5; presets + date fields in the URL | chosen from HTML mockups |
+| Transactions | grouped by day with daily totals; filters in the URL, text search in the browser; delete with a confirm dialog | the API has no restore, so no "undo" |
+| New transaction | dialog with the amount first and category tiles (radio buttons underneath); defaults Expense, no category, today | quick to use, accessible |
+| Categories | two columns (income, expenses), add field on top, inline rename, delete with a confirm dialog that explains 409 "in use" | both types visible at once |
+| Demo data | `npm run seed` (TypeScript, `tsx`): fixed plan for three months relative to today, only through the public API | reproducible screenshots and demos |
+| Back end change | optional `date` on `POST /api/v1/transactions` (not in the future), `TimeProvider` in `TransactionService` | needed for booking past days and for the seed |
+
+**Issues**
+
+| Issue | PR | Content |
+|---|---|---|
+| #103 | #112 | scaffold, tooling, layout and routing, `dev:all` |
+| #104 | #113 | typed API client, `ApiError`, query hooks, toasts, format helpers |
+| #105 | #114 | API: optional date when creating a transaction |
+| #106 | #115 | dashboard |
+| #107 | #116 | transaction list with filters and delete |
+| #108 | #117 | create transaction dialog |
+| #109 | #118 | manage categories |
+| #110 | #119 | seed script for demo data |
+| #111 | – | docs: README, screenshots, architecture, this section |
+
+**Lessons learned**
+
+- MSW 3 renamed `onUnhandledRequest` to `onUnhandledFrame`; the old option was ignored silently, only the type check found it.
+- An open `<dialog>` lives in the browser's top layer and covers normal toasts → the toast container is a `popover`.
+- Formatting the amount on blur rounded `42,505` to `42,51` → only valid input is formatted.
+- `toLocaleDateString` differs between Node and browsers → day headings are built by hand.
+- Recharts pushed the bundle over 500 kB → the dashboard route is lazy-loaded.
