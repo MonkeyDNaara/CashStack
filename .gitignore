@@ -447,3 +447,6 @@ logs/
 docs/planning/create_issues.py
 docs/project_instructions_files/
 docs/project_instructions.html
+
+# Created by the Claude desktop app in the project folder
+Claude outputs/
