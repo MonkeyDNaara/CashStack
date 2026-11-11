@@ -20,7 +20,7 @@ export function CategoryTiles({ categories, value, onChange, error, errorId }: C
   return (
     <fieldset aria-describedby={error ? errorId : undefined}>
       <legend className="mb-1.5 text-sm font-semibold">Category</legend>
-      <div className="grid max-h-56 grid-cols-3 gap-2 overflow-y-auto p-0.5">
+      <div className="grid max-h-60 grid-cols-3 gap-2 overflow-y-auto p-0.5">
         {categories.map((c) => {
           const checked = c.id === value;
           return (
