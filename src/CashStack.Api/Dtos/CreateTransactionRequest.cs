@@ -22,4 +22,8 @@ public class CreateTransactionRequest
         ParseLimitsInInvariantCulture = true, ConvertValueInInvariantCulture = true)]
     [MaxDecimalPlaces(2)]
     public decimal Amount { get; init; }
+
+    // Optional booking day (yyyy-MM-dd); missing → now. The service checks the rule again.
+    [NotInFuture]
+    public DateOnly? Date { get; init; }
 }
