@@ -50,7 +50,8 @@ src/
 ├── queries/             # TanStack Query hooks + query key factory (invalidation after mutations)
 ├── components/
 │   ├── layout/          # AppLayout (navbar), PageHeader
-│   ├── common/          # Modal (<dialog>), DateRangePicker, CategoryChip
+│   ├── categories/      # two columns with add field, inline rename, delete dialog
+│   ├── common/          # Modal (<dialog>), DateRangePicker, CategoryChip, icons
 │   ├── dashboard/       # stat cards, donut + category list, recent transactions
 │   ├── transactions/    # filters, list grouped by day, create dialog (category tiles), delete dialog
 │   └── feedback/        # Toaster, ErrorAlert
