@@ -3,6 +3,7 @@ using CashStack.Data;
 using CashStack.Repositories;
 using CashStack.Services;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace CashStack.Api.Extensions;
 
@@ -40,12 +41,16 @@ public static class StorageServiceCollectionExtensions
             };
         });
 
+        // One clock for the services and the validation attributes; tests can replace it
+        services.TryAddSingleton(TimeProvider.System);
+
         // Factory registration: every new TransactionService instance gets the audit log subscription
         services.AddScoped(sp =>
         {
             var service = new TransactionService(
                 sp.GetRequiredService<ITransactionRepository>(),
-                sp.GetRequiredService<ICategoryRepository>());
+                sp.GetRequiredService<ICategoryRepository>(),
+                sp.GetRequiredService<TimeProvider>());
 
             if (auditLog is not null)
             {
