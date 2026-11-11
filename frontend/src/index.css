@@ -2,3 +2,11 @@
 @plugin "daisyui" {
   themes: corporate --default;
 }
+
+/* Brand color from the logo instead of the theme's blue */
+@plugin "daisyui/theme" {
+  name: 'corporate';
+  default: true;
+  --color-primary: #0f766e;
+  --color-primary-content: #ffffff;
+}

@@ -6,6 +6,7 @@ import { RecentTransactions } from '../components/dashboard/RecentTransactions';
 import { StatCards } from '../components/dashboard/StatCards';
 import { ErrorAlert } from '../components/feedback/ErrorAlert';
 import { PageHeader } from '../components/layout/PageHeader';
+import { NewTransactionButton } from '../components/transactions/NewTransactionButton';
 import { useDateRangeParams } from '../hooks/useDateRangeParams';
 import { useSummary, useTransactions } from '../queries/transactions';
 
@@ -50,7 +51,11 @@ export function DashboardPage() {
 
   return (
     <>
-      <PageHeader title="Dashboard" description="Income, expenses and balance per category." />
+      <PageHeader
+        title="Dashboard"
+        description="Income, expenses and balance per category."
+        actions={<NewTransactionButton />}
+      />
       <div className="mb-6">
         <DateRangePicker
           value={range}

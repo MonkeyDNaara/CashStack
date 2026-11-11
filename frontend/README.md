@@ -52,11 +52,11 @@ src/
 │   ├── layout/          # AppLayout (navbar), PageHeader
 │   ├── common/          # Modal (<dialog>), DateRangePicker, CategoryChip
 │   ├── dashboard/       # stat cards, donut + category list, recent transactions
-│   ├── transactions/    # filters, list grouped by day, delete dialog
+│   ├── transactions/    # filters, list grouped by day, create dialog (category tiles), delete dialog
 │   └── feedback/        # Toaster, ErrorAlert
 ├── pages/               # one component per route (dashboard is lazy-loaded: Recharts only loads there)
 ├── hooks/               # URL state (useDateRangeParams, useTransactionFilterParams), useCategoryColors
-├── lib/                 # QueryClient, toast store, format helpers, date range presets, category colors
+├── lib/                 # QueryClient, toast store, format helpers, amount parsing, date ranges, category colors
 ├── test/                # test setup, MSW server + fixtures, render helpers
 ├── routes.tsx           # route table, shared by the app and the tests
 ├── config.ts            # API base URL from VITE_API_URL

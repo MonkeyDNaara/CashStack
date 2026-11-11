@@ -4,6 +4,7 @@ import type { Transaction } from '../api/types';
 import { ErrorAlert } from '../components/feedback/ErrorAlert';
 import { PageHeader } from '../components/layout/PageHeader';
 import { DeleteTransactionDialog } from '../components/transactions/DeleteTransactionDialog';
+import { NewTransactionButton } from '../components/transactions/NewTransactionButton';
 import { TransactionFilters } from '../components/transactions/TransactionFilters';
 import { TransactionList } from '../components/transactions/TransactionList';
 import { useTransactionFilterParams } from '../hooks/useTransactionFilterParams';
@@ -78,7 +79,11 @@ export function TransactionsPage() {
 
   return (
     <>
-      <PageHeader title="Transactions" description="All income and expenses with filters." />
+      <PageHeader
+        title="Transactions"
+        description="All income and expenses with filters."
+        actions={<NewTransactionButton defaultType={filters.type} />}
+      />
       <div className="flex flex-col gap-4">
         <TransactionFilters
           range={range}
