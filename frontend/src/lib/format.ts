@@ -42,3 +42,8 @@ export function formatSignedMoney(amount: number, type: TransactionType): string
 export function formatPercent(value: number, total: number): string {
   return `${total > 0 ? Math.round((value / total) * 100) : 0} %`;
 }
+
+/** Net amount with sign: "+1.621,90 €" or "−42,50 €" */
+export function formatNetMoney(net: number): string {
+  return formatSignedMoney(net, net < 0 ? 'Expense' : 'Income');
+}
