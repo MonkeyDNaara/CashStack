@@ -21,6 +21,11 @@ export default defineConfig([
       globals: globals.browser,
     },
   },
+  // Node scripts (seed) run outside the browser
+  {
+    files: ['scripts/**/*.ts'],
+    languageOptions: { globals: globals.node },
+  },
   // Prettier owns formatting: turn off ESLint rules that would conflict with it
   prettier,
 ]);
