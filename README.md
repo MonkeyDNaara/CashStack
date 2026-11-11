@@ -3,7 +3,7 @@
 A budget tracker in **C# / .NET 10**: record income and expenses, organise them in
 categories and get reports with totals per category for any date range. It comes as a
 **console app** and a **REST API** on top of one shared core library, with **SQLite via
-Entity Framework Core** (or JSON files) as storage and **82 automated tests**.
+Entity Framework Core** (or JSON files) as storage and **89 automated tests**.
 
 My first C# project, built during the WBS Coding School "Software Engineering & AI"
 program (requirements FR001–FR016 plus the course topics REST API, middleware, filters,
@@ -99,6 +99,9 @@ Content-Type: application/json
 
 { "type": "Expense", "categoryId": "6f0b8a52-1c3e-4c1a-9a51-000000000201", "description": "Weekly shopping", "amount": 42.50 }
 ```
+
+`date` (`yyyy-MM-dd`) is optional: without it the transaction is booked now, a past day
+keeps the current time of day, a future day is rejected with `400` and a field error for `date`.
 
 ```json
 {
@@ -272,7 +275,7 @@ Plan and requirements: [docs/planning/PLANNING.md](docs/planning/PLANNING.md)
 dotnet test
 ```
 
-82 tests (xUnit), no files left on disk:
+89 tests (xUnit), no files left on disk:
 
 | Area | How |
 |---|---|
