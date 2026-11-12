@@ -40,6 +40,7 @@ builder.Services
 builder.Services.AddRequestTiming();
 builder.Services.AddFrontendCors(builder.Configuration);
 builder.Services.AddCashStackHealthChecks();
+builder.Services.AddDemoData();
 builder.Services.AddProblemDetails(options =>
 {
     // Applies to every ProblemDetails response (exceptions, validation, status codes)
@@ -73,6 +74,8 @@ catch (Exception ex) when (ex is StorageException or ConfigurationException)
     app.Logger.LogCritical(ex, "Storage could not be initialized. Shutting down.");
     return 1;
 }
+
+await app.SeedDemoDataIfEnabledAsync();
 
 if (auditLogError is not null)
 {

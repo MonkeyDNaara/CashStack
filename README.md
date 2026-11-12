@@ -75,6 +75,8 @@ npm run dev:all
 npm run seed      # optional, in a second terminal: three months of demo data
 ```
 
+Alternatively the API seeds itself: start it with `Demo__SeedIfEmpty=true` (same data, see `Demo:SeedIfEmpty` below).
+
 Details, scripts and the front-end structure: [frontend/README.md](frontend/README.md).
 
 **API only** (http://localhost:5198, run from the project folder):
@@ -110,6 +112,7 @@ Both apps read the same keys from their `appsettings.json`:
 | `Storage:DataDirectory` | `data` | Folder for the JSON provider |
 | `Storage:LogDirectory` | `logs` | Folder for `transactions.log` |
 | `Cors:AllowedOrigins` | `["http://localhost:5173"]` | Front-end origins (API only) |
+| `Demo:SeedIfEmpty` | `false` | API only: at startup, add the demo data when the last three months have no transactions (live demo) |
 
 An unknown provider stops the app at startup with exit code 1 and a clear message.
 
