@@ -44,7 +44,8 @@ const leisure = [
 ];
 
 /**
- * About 45 realistic transactions over the current and the two previous months.
+ * About 40 realistic transactions over the current and the two previous months.
+ * The API has the same plan in C# (src/CashStack.Core/Demo/DemoDataPlan.cs) — keep both in sync.
  * Days after today (current month) or beyond the month's length are skipped,
  * because the API rejects future dates.
  */
