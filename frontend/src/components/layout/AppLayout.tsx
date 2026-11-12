@@ -1,4 +1,7 @@
 import { NavLink, Outlet } from 'react-router';
+import { DEMO_MODE } from '../../config';
+import { DemoFooter } from './DemoFooter';
+import { WakeUpBanner } from './WakeUpBanner';
 
 const navItems = [
   { to: '/', label: 'Dashboard', end: true },
@@ -32,9 +35,11 @@ export function AppLayout() {
           </nav>
         </div>
       </header>
+      <WakeUpBanner />
       <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6">
         <Outlet />
       </main>
+      {DEMO_MODE && <DemoFooter />}
     </div>
   );
 }
