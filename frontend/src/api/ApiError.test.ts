@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ApiError } from './ApiError';
+import { ApiError, networkMessage } from './ApiError';
 
 describe('ApiError', () => {
   it('normalises ASP.NET field names to the camelCase names of the form', () => {
@@ -45,5 +45,10 @@ describe('ApiError', () => {
     expect(error.isUnexpected).toBe(true);
     expect(error.userMessage).toMatch(/not reachable/);
     expect(error.cause).toBeInstanceOf(TypeError);
+  });
+
+  it('explains a sleeping server on the live demo, a stopped API locally', () => {
+    expect(networkMessage(true)).toMatch(/waking up/);
+    expect(networkMessage(false)).toMatch(/is it running/i);
   });
 });

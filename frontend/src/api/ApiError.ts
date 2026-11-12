@@ -1,8 +1,19 @@
+import { DEMO_MODE } from '../config';
 import type { ProblemDetails } from './types';
 
 export type FieldErrors = Record<string, string[]>;
 
-const NETWORK_MESSAGE = 'The CashStack API is not reachable. Is it running on the configured URL?';
+/**
+ * Locally the API is probably not started; on the live demo the free server is probably asleep
+ * (the first request after 15 idle minutes can take up to a minute).
+ */
+export function networkMessage(demoMode: boolean): string {
+  return demoMode
+    ? 'The CashStack API is not reachable yet. The free demo server may still be waking up – please try again in a moment.'
+    : 'The CashStack API is not reachable. Is it running on the configured URL?';
+}
+
+const NETWORK_MESSAGE = networkMessage(DEMO_MODE);
 
 /**
  * One error type for every failed API call, so the UI never has to parse responses itself.
