@@ -9,19 +9,19 @@ namespace CashStack.Tests.Support;
 public sealed class SqliteTestDatabase : IDisposable
 {
     private readonly SqliteConnection _connection = new("Data Source=:memory:");
-    private readonly DbContextOptions<CashStackDbContext> _options;
+    private readonly DbContextOptions<SqliteCashStackDbContext> _options;
 
     public SqliteTestDatabase()
     {
         _connection.Open();
-        _options = new DbContextOptionsBuilder<CashStackDbContext>().UseSqlite(_connection).Options;
+        _options = new DbContextOptionsBuilder<SqliteCashStackDbContext>().UseSqlite(_connection).Options;
 
         using CashStackDbContext context = CreateContext();
         context.Database.Migrate();
     }
 
     // A new context per "request", like the scoped DbContext in the API
-    public CashStackDbContext CreateContext() => new(_options);
+    public CashStackDbContext CreateContext() => new SqliteCashStackDbContext(_options);
 
     public void Dispose() => _connection.Dispose();
 }

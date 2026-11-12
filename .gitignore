@@ -438,6 +438,7 @@ Temporary Items
 data/
 # Source folder, not runtime data (macOS is case-insensitive: data/ would match Data/)
 !src/CashStack.Core/Data/
+!tests/CashStack.Tests/Data/
 
 # SQLite database files (incl. write-ahead log)
 *.db

@@ -18,15 +18,24 @@ public static class StorageServiceCollectionExtensions
         // Parsed on first use, so an invalid provider is reported by the startup check in Program.cs
         services.AddSingleton(_ => StorageSettings.FromConfiguration(configuration));
 
-        services.AddDbContext<CashStackDbContext>((sp, options) =>
+        // One registration per provider; CashStackDbContext resolves to the configured one,
+        // so the repositories only know the abstract base class
+        services.AddDbContext<SqliteCashStackDbContext>((sp, options) =>
             options.UseSqlite(sp.GetRequiredService<StorageSettings>().ConnectionString));
+        services.AddDbContext<PostgresCashStackDbContext>((sp, options) =>
+            options.UseNpgsql(sp.GetRequiredService<StorageSettings>().ConnectionString));
+        services.AddScoped<CashStackDbContext>(sp => sp.GetRequiredService<StorageSettings>().Provider switch
+        {
+            StorageProvider.Postgres => sp.GetRequiredService<PostgresCashStackDbContext>(),
+            _ => sp.GetRequiredService<SqliteCashStackDbContext>()
+        });
 
         services.AddScoped<ITransactionRepository>(sp =>
         {
             StorageSettings settings = sp.GetRequiredService<StorageSettings>();
             return settings.Provider switch
             {
-                StorageProvider.Sqlite => new EfTransactionRepository(sp.GetRequiredService<CashStackDbContext>()),
+                _ when settings.UsesDatabase => new EfTransactionRepository(sp.GetRequiredService<CashStackDbContext>()),
                 _ => new JsonTransactionRepository(settings.DataDirectory)
             };
         });
@@ -36,7 +45,7 @@ public static class StorageServiceCollectionExtensions
             StorageSettings settings = sp.GetRequiredService<StorageSettings>();
             return settings.Provider switch
             {
-                StorageProvider.Sqlite => new EfCategoryRepository(sp.GetRequiredService<CashStackDbContext>()),
+                _ when settings.UsesDatabase => new EfCategoryRepository(sp.GetRequiredService<CashStackDbContext>()),
                 _ => new JsonCategoryRepository(settings.DataDirectory)
             };
         });

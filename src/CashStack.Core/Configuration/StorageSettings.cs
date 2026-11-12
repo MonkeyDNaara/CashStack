@@ -1,5 +1,6 @@
 using CashStack.Exceptions;
 using Microsoft.Extensions.Configuration;
+using Npgsql;
 
 namespace CashStack.Configuration;
 
@@ -12,6 +13,9 @@ public sealed class StorageSettings
     public StorageProvider Provider { get; }
     public string DataDirectory { get; }
     public string ConnectionString { get; }
+
+    // SQLite and Postgres go through EF Core (DbContext + migrations), JSON uses files
+    public bool UsesDatabase => Provider is StorageProvider.Sqlite or StorageProvider.Postgres;
 
     public StorageSettings(StorageProvider provider, string dataDirectory, string connectionString)
     {
@@ -28,12 +32,40 @@ public sealed class StorageSettings
         if (!Enum.TryParse(providerValue, ignoreCase: true, out StorageProvider provider) || !Enum.IsDefined(provider))
         {
             throw new ConfigurationException(
-                $"Unknown Storage:Provider '{providerValue}'. Use '{StorageProvider.Sqlite}' or '{StorageProvider.Json}'.");
+                $"Unknown Storage:Provider '{providerValue}'. Use '{StorageProvider.Sqlite}', '{StorageProvider.Postgres}' or '{StorageProvider.Json}'.");
+        }
+
+        string connectionString = configuration.GetConnectionString("CashStack") ?? DefaultConnectionString;
+        if (provider == StorageProvider.Postgres)
+        {
+            EnsurePostgresConnectionString(connectionString);
         }
 
         return new StorageSettings(
             provider,
             configuration["Storage:DataDirectory"] ?? DefaultDataDirectory,
-            configuration.GetConnectionString("CashStack") ?? DefaultConnectionString);
+            connectionString);
+    }
+
+    // Fails fast at startup instead of on the first request. The messages never contain
+    // the connection string itself: it holds the database password.
+    private static void EnsurePostgresConnectionString(string connectionString)
+    {
+        NpgsqlConnectionStringBuilder builder;
+        try
+        {
+            builder = new NpgsqlConnectionStringBuilder(connectionString);
+        }
+        catch (ArgumentException)
+        {
+            throw new ConfigurationException(
+                "ConnectionStrings:CashStack is not a valid Npgsql connection string. " +
+                "Use the key-value format Host=...;Database=...;Username=...;Password=...;SSL Mode=Require (not a postgresql:// URI).");
+        }
+
+        if (string.IsNullOrWhiteSpace(builder.Host))
+        {
+            throw new ConfigurationException("ConnectionStrings:CashStack needs a Host for Storage:Provider 'Postgres'.");
+        }
     }
 }

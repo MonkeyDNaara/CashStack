@@ -105,13 +105,26 @@ Both apps read the same keys from their `appsettings.json`:
 
 | Key | Default | Meaning |
 |---|---|---|
-| `Storage:Provider` | `Sqlite` | `Sqlite` (EF Core) or `Json` (one file per day) |
-| `ConnectionStrings:CashStack` | `Data Source=data/cashstack.db` | SQLite database file |
+| `Storage:Provider` | `Sqlite` | `Sqlite` or `Postgres` (EF Core), or `Json` (one file per day) |
+| `ConnectionStrings:CashStack` | `Data Source=data/cashstack.db` | SQLite file, or a Postgres server in the Npgsql key-value format |
 | `Storage:DataDirectory` | `data` | Folder for the JSON provider |
 | `Storage:LogDirectory` | `logs` | Folder for `transactions.log` |
 | `Cors:AllowedOrigins` | `["http://localhost:5173"]` | Front-end origins (API only) |
 
 An unknown provider stops the app at startup with exit code 1 and a clear message.
+
+**Postgres** (used by the live demo): environment variables override `appsettings.json`.
+The connection string must be in the Npgsql key-value format, not a `postgresql://` URI:
+
+```bash
+Storage__Provider=Postgres \
+ConnectionStrings__CashStack="Host=<host>;Database=<db>;Username=<user>;Password=<password>;SSL Mode=Require" \
+dotnet run --project src/CashStack.Api
+```
+
+Each provider has its own migration set (`Data/Migrations/Sqlite`, `Data/Migrations/Postgres`), applied at startup.
+The Postgres tests run when `CASHSTACK_TEST_POSTGRES` points to a server (e.g. `docker run -e POSTGRES_PASSWORD=postgres -p 5432:5432 postgres:17`,
+then `CASHSTACK_TEST_POSTGRES="Host=localhost;Username=postgres;Password=postgres" dotnet test`); otherwise they are skipped.
 
 ## REST API
 
@@ -286,7 +299,7 @@ src/
 ├── CashStack.Core/           # shared library, no UI
 │   ├── Models/               # Transaction, Category, DefaultCategories, TransactionSummary, CategoryTotal
 │   ├── Repositories/         # interfaces + JSON and EF Core implementations
-│   ├── Data/                 # CashStackDbContext, entity configurations, migrations
+│   ├── Data/                 # CashStackDbContext (abstract) + SQLite/Postgres subclasses, entity configurations, migrations per provider
 │   ├── Services/             # TransactionService, CategoryService, ImportService, LoggerService
 │   ├── Configuration/        # StorageSettings, StorageProvider
 │   ├── Exceptions/           # StorageException, DomainException → BusinessRule / Conflict

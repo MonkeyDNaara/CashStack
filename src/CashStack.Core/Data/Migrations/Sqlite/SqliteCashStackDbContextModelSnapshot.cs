@@ -7,10 +7,10 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
 
-namespace CashStack.Data.Migrations
+namespace CashStack.Data.Migrations.Sqlite
 {
-    [DbContext(typeof(CashStackDbContext))]
-    partial class CashStackDbContextModelSnapshot : ModelSnapshot
+    [DbContext(typeof(SqliteCashStackDbContext))]
+    partial class SqliteCashStackDbContextModelSnapshot : ModelSnapshot
     {
         protected override void BuildModel(ModelBuilder modelBuilder)
         {
