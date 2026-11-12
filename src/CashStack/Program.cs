@@ -24,12 +24,9 @@ StorageSettings settings;
 try
 {
     settings = StorageSettings.FromConfiguration(configuration);
-    if (settings.Provider == StorageProvider.Sqlite)
+    if (settings.UsesDatabase)
     {
-        DbContextOptions<CashStackDbContext> dbOptions = new DbContextOptionsBuilder<CashStackDbContext>()
-            .UseSqlite(settings.ConnectionString)
-            .Options;
-        dbContext = new CashStackDbContext(dbOptions);
+        dbContext = CashStackDbContextFactory.Create(settings);
         await DatabaseInitializer.InitializeAsync(dbContext);
 
         repository = new EfTransactionRepository(dbContext);

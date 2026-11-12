@@ -12,12 +12,11 @@ public class CategoryConfiguration : IEntityTypeConfiguration<Category>
         builder.ToTable("Categories");
         builder.HasKey(c => c.Id);
 
-        // NOCASE: "Rent" and "rent" collide in the unique index below.
-        // Safety net only (ASCII case folding); CategoryService checks first and returns a clear message
+        // Case-insensitive collation per provider (see ConfigureProvider in the DbContext subclasses),
+        // so "Rent" and "rent" collide in the unique index below
         builder.Property(c => c.Name)
             .IsRequired()
-            .HasMaxLength(Category.MaxNameLength)
-            .UseCollation("NOCASE");
+            .HasMaxLength(Category.MaxNameLength);
 
         builder.Property(c => c.Type)
             .HasConversion<string>()

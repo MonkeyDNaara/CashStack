@@ -1,18 +1,14 @@
 using System.Data.Common;
 using CashStack.Data;
 using CashStack.Exceptions;
-using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 
 namespace CashStack.Repositories;
 
 // Shared base for the EF Core repositories: holds the DbContext and translates
-// database errors into our own exceptions, so services never see EF or SQLite types
+// database errors into our own exceptions, so services never see EF or provider types
 public abstract class EfRepositoryBase
 {
-    // SQLITE_CONSTRAINT: unique index or foreign key violated
-    private const int SqliteConstraintError = 19;
-
     protected CashStackDbContext Context { get; }
 
     protected EfRepositoryBase(CashStackDbContext context)
@@ -26,7 +22,8 @@ public abstract class EfRepositoryBase
         {
             return await action();
         }
-        catch (Exception ex) when (IsConstraintViolation(ex))
+        // The DbContext subclass knows the error codes of its provider (SQLite, Postgres)
+        catch (Exception ex) when (Context.IsConstraintViolation(ex))
         {
             // Normally the services check these rules first; this only happens in a race
             // (e.g. two requests create the same category at the same time)
@@ -44,8 +41,4 @@ public abstract class EfRepositoryBase
             await action();
             return true;
         });
-
-    // SaveChanges wraps the SQLite error in a DbUpdateException, ExecuteDelete throws it directly
-    private static bool IsConstraintViolation(Exception ex) =>
-        (ex as SqliteException ?? ex.InnerException as SqliteException)?.SqliteErrorCode == SqliteConstraintError;
 }

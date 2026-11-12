@@ -59,7 +59,7 @@ try
 {
     using IServiceScope scope = app.Services.CreateScope();
     StorageSettings settings = scope.ServiceProvider.GetRequiredService<StorageSettings>();
-    if (settings.Provider == StorageProvider.Sqlite)
+    if (settings.UsesDatabase)
     {
         await DatabaseInitializer.InitializeAsync(scope.ServiceProvider.GetRequiredService<CashStackDbContext>());
     }
