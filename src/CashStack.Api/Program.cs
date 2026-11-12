@@ -39,6 +39,7 @@ builder.Services
     });
 builder.Services.AddRequestTiming();
 builder.Services.AddFrontendCors(builder.Configuration);
+builder.Services.AddCashStackHealthChecks();
 builder.Services.AddProblemDetails(options =>
 {
     // Applies to every ProblemDetails response (exceptions, validation, status codes)
@@ -86,6 +87,7 @@ app.UseExceptionHandler();
 app.UseStatusCodePages();
 
 app.MapControllers();
+app.MapCashStackHealthChecks();
 
 app.Run();
 return 0;
