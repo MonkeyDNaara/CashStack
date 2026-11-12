@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using CashStack.Api.Extensions;
 
 namespace CashStack.Api.Middleware;
 
@@ -13,6 +14,13 @@ public class RequestTimingMiddleware : IMiddleware
 
     public async Task InvokeAsync(HttpContext context, RequestDelegate next)
     {
+        // The platform pings the health check every few seconds: logging it would bury the real requests
+        if (context.Request.Path.StartsWithSegments(HealthCheckExtensions.Path))
+        {
+            await next(context);
+            return;
+        }
+
         long start = Stopwatch.GetTimestamp();
         try
         {

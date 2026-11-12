@@ -1,0 +1,16 @@
+# Only src/CashStack.Core and src/CashStack.Api are copied; keep the build context small
+**/bin/
+**/obj/
+**/data/
+**/logs/
+**/*.db
+**/*.db-shm
+**/*.db-wal
+**/node_modules/
+.git/
+.vs/
+.vscode/
+frontend/
+tests/
+docs/
+Claude outputs/
