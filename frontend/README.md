@@ -26,6 +26,11 @@ The API URL comes from `VITE_API_URL` (default `http://localhost:5198`). To chan
 copy `.env.example` to `.env.local`. The dev server always uses port 5173, because the
 API's CORS policy allows exactly that origin (`Cors:AllowedOrigins`).
 
+`VITE_DEMO_MODE=true` (only in the live-demo build) adds a footer that the data is shared,
+and explains a network error as a sleeping free server. The wake-up bar itself always works:
+the app pings `GET /health` on start and when the tab comes back after 14 minutes, and shows
+"Waking up the free demo server" when the answer takes longer than 2 seconds.
+
 ## Demo data
 
 With the API running, fill an empty database with demo data for the last three months
